@@ -67,7 +67,28 @@ def get_current_user(
     return CurrentUser(id=user.id, role=user.role.value, status=user.status)
 
 
-# Alias with an intention-revealing name (prompt §9).
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    session: Session = Depends(db_session),
+) -> CurrentUser | None:
+    """Optionally validate bearer token if present; returns None if unauthenticated."""
+    if credentials is None or not credentials.credentials:
+        return None
+    try:
+        return get_current_user(credentials=credentials, session=session)
+    except Exception:
+        return None
+
+
+def require_admin(
+    current: CurrentUser = Depends(get_current_user),
+) -> CurrentUser:
+    """Enforce admin role."""
+    if current.role != "admin":
+        raise PermissionDeniedError("Admin privileges required.")
+    return current
+
+
 def require_authenticated_user(
     current: CurrentUser = Depends(get_current_user),
 ) -> CurrentUser:

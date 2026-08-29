@@ -24,6 +24,19 @@ from app.models.document import (
 )
 from app.models.document_requirement import DocumentRequirement
 from app.models.eligibility import EligibilityCheck, EligibilityRule
+from app.models.opportunity import (
+    CrawlItem,
+    CrawlRun,
+    LinkVerification,
+    Opportunity,
+    OpportunityAlert,
+    OpportunityApplicationTrack,
+    OpportunityChange,
+    OpportunityLink,
+    OpportunitySource,
+    OpportunitySubscription,
+    OpportunityVersion,
+)
 from app.models.enums import (
     ActionRequiredStatus,
     AddressType,
@@ -42,6 +55,12 @@ from app.models.enums import (
     NotificationChannel,
     NotificationPriority,
     NotificationStatus,
+    OpportunityApplicationStatus,
+    OpportunityAuthorityLevel,
+    OpportunityDeadlineStatus,
+    OpportunityLinkType,
+    OpportunitySourceType,
+    OpportunityType,
     DeliveryErrorCode,
     DomainEventType,
     PreferredLanguage,
@@ -111,6 +130,17 @@ __all__ = [
     "NotificationPreference",
     "DeadLetterEvent",
     "OutboxEvent",
+    "OpportunitySource",
+    "Opportunity",
+    "OpportunityVersion",
+    "OpportunityLink",
+    "OpportunitySubscription",
+    "OpportunityAlert",
+    "OpportunityChange",
+    "OpportunityApplicationTrack",
+    "CrawlRun",
+    "CrawlItem",
+    "LinkVerification",
     "UserRole",
     "UserStatus",
     "AddressType",
@@ -143,4 +173,11 @@ __all__ = [
     "DeliveryErrorCode",
     "PreferredLanguage",
     "OutboxStatus",
+    "OpportunityType",
+    "OpportunitySourceType",
+    "OpportunityAuthorityLevel",
+    "OpportunityDeadlineStatus",
+    "OpportunityLinkType",
+    "OpportunityApplicationStatus",
 ]
+

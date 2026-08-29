@@ -1300,3 +1300,37 @@ components:
         diff: { type: object, nullable: true }
         created_at: { type: string, format: date-time }
 
+    OpportunityResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        title: { type: string }
+        organization: { type: string }
+        description: { type: string }
+        summary: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        remote: { type: boolean }
+        status: { type: string }
+        source_url: { type: string }
+        application_url: { type: string, nullable: true }
+        source_domain: { type: string }
+        source_name: { type: string }
+        quality_score: { type: number }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    OpportunitySourceResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        domain: { type: string }
+        base_url: { type: string }
+        source_type: { type: string }
+        authority_level: { type: string }
+        crawl_frequency: { type: string }
+        enabled: { type: boolean }
+        last_crawled_at: { type: string, format: date-time, nullable: true }
+
+

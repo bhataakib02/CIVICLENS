@@ -393,3 +393,79 @@ class OutboxStatus(str, enum.Enum):
     DISPATCHED = "dispatched"
     FAILED = "failed"
     DEAD_LETTER = "dead_letter"
+
+
+class OpportunityType(str, enum.Enum):
+    """Opportunity kinds supported across government and private sectors."""
+
+    JOB = "JOB"
+    INTERNSHIP = "INTERNSHIP"
+    APPRENTICESHIP = "APPRENTICESHIP"
+    SCHOLARSHIP = "SCHOLARSHIP"
+    FELLOWSHIP = "FELLOWSHIP"
+    GOVERNMENT_SCHEME = "GOVERNMENT_SCHEME"
+    GRANT = "GRANT"
+    TRAINING = "TRAINING"
+    SKILL_PROGRAM = "SKILL_PROGRAM"
+    JOB_FAIR = "JOB_FAIR"
+    COMPETITION = "COMPETITION"
+    ADMISSION = "ADMISSION"
+    OTHER = "OTHER"
+
+
+class OpportunitySourceType(str, enum.Enum):
+    """Source organization type for opportunities."""
+
+    CENTRAL_GOVERNMENT = "CENTRAL_GOVERNMENT"
+    STATE_GOVERNMENT = "STATE_GOVERNMENT"
+    PUBLIC_INSTITUTION = "PUBLIC_INSTITUTION"
+    UNIVERSITY = "UNIVERSITY"
+    PSU = "PSU"
+    PRIVATE_COMPANY = "PRIVATE_COMPANY"
+    NGO = "NGO"
+    FOUNDATION = "FOUNDATION"
+    EDUCATIONAL_INSTITUTION = "EDUCATIONAL_INSTITUTION"
+    OTHER = "OTHER"
+
+
+class OpportunityAuthorityLevel(str, enum.Enum):
+    """Authority and trust tier of opportunity sources."""
+
+    OFFICIAL = "OFFICIAL"
+    VERIFIED_PARTNER = "VERIFIED_PARTNER"
+    KNOWN_PRIVATE = "KNOWN_PRIVATE"
+    UNVERIFIED = "UNVERIFIED"
+
+
+class OpportunityDeadlineStatus(str, enum.Enum):
+    """Calculated urgency and deadline status."""
+
+    UPCOMING = "UPCOMING"
+    OPEN = "OPEN"
+    CLOSING_SOON = "CLOSING_SOON"
+    CLOSED = "CLOSED"
+    DATE_UNKNOWN = "DATE_UNKNOWN"
+
+
+class OpportunityLinkType(str, enum.Enum):
+    """Classification of links on opportunity pages."""
+
+    NOTIFICATION = "NOTIFICATION"
+    APPLY = "APPLY"
+    REGISTRATION = "REGISTRATION"
+    LOGIN = "LOGIN"
+    DOWNLOAD = "DOWNLOAD"
+    RESULT = "RESULT"
+    SYLLABUS = "SYLLABUS"
+
+
+class OpportunityApplicationStatus(str, enum.Enum):
+    """External application tracking state recorded by citizens."""
+
+    NOT_APPLIED = "NOT_APPLIED"
+    APPLIED = "APPLIED"
+    INTERVIEW = "INTERVIEW"
+    SELECTED = "SELECTED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"
+

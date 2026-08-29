@@ -93,10 +93,10 @@ def _normalize_phone(phone: str) -> str:
 def _generate_otp_code(settings: Settings) -> str:
     """Generate a cryptographically secure OTP code.
 
-    In test environment with OTP_TEST_FIXED_CODE=true, returns '000000'
-    for deterministic test assertions. NEVER fixed in production.
+    In non-production environment with OTP_TEST_FIXED_CODE=true, returns '000000'
+    for deterministic test/demo assertions. NEVER fixed in production.
     """
-    if getattr(settings, "environment", "development") in ("test",) and getattr(
+    if not getattr(settings, "is_production", False) and getattr(
         settings, "otp_test_fixed_code", True
     ):
         return "000000"

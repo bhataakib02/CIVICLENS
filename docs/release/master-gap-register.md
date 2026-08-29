@@ -1,27 +1,21 @@
-# CIVICLENS MASTER GAP REGISTER
+# CivicLens Master Gap Register & Resolution Audit
 
-**Version:** v1.0.0-rc.2  
-**Date:** 2026-08-29  
-**Status:** Audit & Resolution Complete  
+This master gap register documents every requirement, architectural boundary, and gap resolution in CivicLens v1.0.0-rc.3.
 
 ---
 
-## Master Gap Inventory across System Layers
+## Requirement & Gap Status Matrix
 
-| # | System Area | Requirement | Actual Implementation | Key Files | Tests | Status | Resolution / Fix Applied |
-|---|---|---|---|---|---|---|---|
-| 1 | **Configuration** | `OTP_PROVIDER` declared & validated in Settings | Field `otp_provider` added to `Settings` with alias `OTP_PROVIDER` and production validation | `backend/app/core/config.py` | `test_unit_security.py` | **COMPLETE** | Fixed missing field and added regression tests |
-| 2 | **Authentication** | OTP flow, JWT refresh rotation, revocation | Abstract `OTPProvider` interface, `DevOTPProvider` and `ProductionOTPProvider` wired | `backend/app/services/otp.py`, `auth/service.py` | `test_integration_auth_otp.py` | **COMPLETE** | Clean provider abstraction with production credentials requirement |
-| 3 | **Authorization** | Strict server-side RBAC across Citizen, Agent, Scheme Admin, Admin | Endpoints check scopes & DB state; IDOR/BOLA guarded | `backend/app/api/v1/endpoints/` | `test_admin_security.py` | **COMPLETE** | Authorization matrix generated and verified |
-| 4 | **Consent** | Immediate access termination when citizen revokes consent | Consent check enforced on agent data access queries | `backend/app/api/v1/endpoints/consents.py` | `test_integration_consents.py` | **COMPLETE** | Enforced at service and API boundary |
-| 5 | **Eligibility** | Deterministic rule compilation & snapshot provenance | Compiled Python expression execution in safe sandbox with complete provenance audit | `backend/app/services/eligibility/engine.py` | `test_unit_engine.py` | **COMPLETE** | Records profile version, scheme version, rule version, timestamp |
-| 6 | **Governance** | Four-eyes scheme version approval (`author != reviewer`) | Server-side & DB invariant checks prevent self-approval; published versions immutable | `backend/app/services/schemes.py` | `test_security_schemes_eligibility.py` | **COMPLETE** | DB state machine and service check enforced |
-| 7 | **Document AI** | Production provider interfaces for OCR, extraction, scanning | Provider interfaces created (`aws_textract`, `clamav`); no silent auto-human verification | `backend/app/services/documents.py` | `test_unit_documents.py` | **COMPLETE** | Interfaces implemented, credentials marked PROVIDER-DEPENDENT |
-| 8 | **RAG / AI** | Grounded answer generation, prompt injection guards | LLM & Embedding provider abstractions; untrusted retrieval context wrapped; output validated | `backend/app/services/assistant.py` | `test_rag_evaluation.py` | **COMPLETE** | Clean provider architecture with output validation |
-| 9 | **Applications** | State machine enforcement & transactional outbox | State machine transitions validated; DB outbox event inserted inside transaction | `backend/app/services/applications.py` | `test_unit_application_state_machine.py` | **COMPLETE** | Enforced transition graph and outbox pattern |
-| 10 | **Gov Integration**| Production Government Submission Adapter | `StatePortalApiSubmissionProvider` implemented with auth, idempotency, and error mapping | `backend/app/modules/applications/submission.py` | `test_contract_applications.py` | **COMPLETE** | Adapter ready; activation PROVIDER-DEPENDENT |
-| 11 | **Notifications**| Email/SMS provider abstractions | `ProductionSMSProvider` and `ProductionEmailProvider` wired with outbox worker retry | `backend/app/services/notifications.py` | `test_unit_notifications.py` | **COMPLETE** | Provider contracts built; credentials externalized |
-| 12 | **Admin Frontend**| Vitest Unit/Component Test Suite | Dedicated Vitest test suite created with permission and component tests | `apps/admin/tests/` | `apps/admin/tests/unit/` | **COMPLETE** | 8 tests passing in Vitest |
-| 13 | **Docker Build** | Clean production container builds | Fixed `apk add --no-cache libc6-compat` in Web & Admin Dockerfiles | `apps/web/Dockerfile`, `apps/admin/Dockerfile` | `docker compose build` | **COMPLETE** | Both Web and Admin containers build cleanly |
-| 14 | **CI/CD Security** | Non-zero Trivy gate & Frontend test execution | Set `exit-code: '1'` in Trivy CI step; added `npm run test` for Web and Admin | `.github/workflows/ci.yml` | GitHub Actions workflow | **COMPLETE** | CI security gates enforce non-zero exit code |
-| 15 | **Deployment** | Automated ECS & Terraform CI/CD Workflows | Activated active ECS update and Terraform plan steps in workflows | `.github/workflows/deploy-*.yml` | GitHub Actions workflow | **COMPLETE** | Workflows updated for active CI/CD deployment |
+| Category | Requirement | Implementation Status | Evidence / Verification |
+| --- | --- | --- | --- |
+| **Authentication & OTP** | Production OTP delivery providers | 🟢 Complete | `AWSSNSOTPProvider`, `TwilioOTPProvider`, `Fast2SMSOTPProvider` implemented in `otp_provider.py`; tested in `test_production_providers.py`. |
+| **Notifications** | Production Email, SMS, Push providers | 🟢 Complete | `SMTPEmailProvider`, `AWSSESEmailProvider`, `SendGridEmailProvider`, `AWSSNSNotificationProvider`, `TwilioSMSNotificationProvider`, `FCMPushNotificationProvider` implemented in `providers/`. |
+| **Government Portal** | Real HTTP requests, Idempotency-Key, timeouts & status mapping | 🟢 Complete | `StatePortalApiSubmissionProvider` with `httpx`, `Idempotency-Key`, `connect/read/write` timeouts, and status code mapping in `submission.py`. |
+| **AI / RAG** | Production LLM providers | 🟢 Complete | `OpenAILLMProvider`, `AnthropicLLMProvider`, `AWSBedrockLLMProvider`, `OllamaLLMProvider` in `llm/provider.py`. |
+| **OCR Processing** | Production Tesseract & AWS Textract providers | 🟢 Complete | `TesseractOCRProvider`, `AWSTextractOCRProvider` in `documents/processing/ocr.py`. |
+| **Secrets & KMS** | Production Terraform secrets hardening | 🟢 Complete | `infrastructure/terraform/modules/secrets/main.tf` updated with KMS key encryption, dynamic random passwords, and lifecycle rules. |
+| **CI/CD Deployment** | Fail-loud AWS auth, ECS task migration runner, zero-downtime update, rollback | 🟢 Complete | `.github/workflows/deploy-production.yml` and `deploy-staging.yml` updated with zero fallback `continue-on-error`, task migration runner, and rollback triggers. |
+| **E2E CI Gates** | Playwright frontend E2E & verification scripts | 🟢 Complete | `.github/workflows/ci.yml` updated with `e2e-verification-suite` running `verify_e2e*.py` and Playwright frontend tests. |
+| **Verification Tools** | AWS Infrastructure, Disaster Recovery, Performance Benchmarks | 🟢 Complete | Executable tools `verify_aws_infrastructure.py`, `verify_backup_restore.py`, `verify_performance_benchmarks.py` created and verified. |
+| **Demo Setup** | Demo reset & seeding tool | 🟢 Complete | `scripts/demo_reset.py` created for one-command environment resets. |
+| **Documentation** | 100% accurate status matrices & reports | 🟢 Complete | `provider-status.md`, `master-gap-register.md`, `blockers.md`, `release-scorecard.md`, and `final-release-audit.md` published. |

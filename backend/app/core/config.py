@@ -153,6 +153,21 @@ class Settings(BaseSettings):
         if self.otp_provider.lower() == "test":
             errors.append("OTP_PROVIDER='test' (fixed OTP code) is forbidden in production.")
 
+        if self.email_provider.lower() == "test":
+            errors.append("EMAIL_PROVIDER='test' is forbidden in production.")
+
+        if self.sms_provider.lower() == "test":
+            errors.append("SMS_PROVIDER='test' is forbidden in production.")
+
+        if self.push_provider.lower() == "test":
+            errors.append("PUSH_PROVIDER='test' is forbidden in production.")
+
+        if self.llm_provider.lower() in ("test", "test-deterministic"):
+            errors.append("LLM_PROVIDER='test' is forbidden in production.")
+
+        if self.embedding_provider.lower() == "test":
+            errors.append("EMBEDDING_PROVIDER='test' is forbidden in production.")
+
         if errors:
             raise ValueError(
                 "CRITICAL PRODUCTION CONFIGURATION FAILURE:\n - " + "\n - ".join(errors)

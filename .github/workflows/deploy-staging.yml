@@ -18,19 +18,64 @@ jobs:
         with:
           aws-region: ap-south-1
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-        continue-on-error: true
 
-      - name: Build & Tag Container Images
-        run: |
-          echo "Building staging container images tagged with SHA: ${{ github.sha }}"
-          docker build -t civiclens-api:${{ github.sha }} -f backend/Dockerfile backend/
-          docker build -t civiclens-worker:${{ github.sha }} -f workers/Dockerfile workers/
-          docker build -t civiclens-web:${{ github.sha }} -f apps/web/Dockerfile apps/web/
-          docker build -t civiclens-admin:${{ github.sha }} -f apps/admin/Dockerfile apps/admin/
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Terraform Plan & Apply (Staging)
+      - name: Build and Push Staging Container Images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          echo "Executing Terraform IaC update for Staging..."
+          IMAGE_TAG="staging-${{ github.sha }}"
+          echo "Building staging container images with tag: ${IMAGE_TAG}"
+          
+          docker build -t ${ECR_REGISTRY}/civiclens-api:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-api:staging -f backend/Dockerfile backend/
+          docker build -t ${ECR_REGISTRY}/civiclens-worker:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-worker:staging -f workers/Dockerfile workers/
+          docker build -t ${ECR_REGISTRY}/civiclens-web:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-web:staging -f apps/web/Dockerfile apps/web/
+          docker build -t ${ECR_REGISTRY}/civiclens-admin:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-admin:staging -f apps/admin/Dockerfile apps/admin/
+
+          docker push ${ECR_REGISTRY}/civiclens-api:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-worker:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-web:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-admin:${IMAGE_TAG}
+
+      - name: Terraform Staging Plan & Apply
+        run: |
+          echo "Executing Terraform IaC update for Staging environment..."
           cd infrastructure/terraform/environments/staging
-          terraform init -input=false || echo "Terraform init skipped due to missing AWS backend credentials boundary."
-          terraform plan -input=false || echo "Terraform plan skipped due to missing AWS backend credentials boundary."
+          terraform init -input=false
+          terraform apply -auto-approve -input=false
+
+      - name: Execute Staging Database Schema Migration Task
+        run: |
+          echo "Running database schema migrations for Staging..."
+          TASK_ARN=$(aws ecs run-task \
+            --cluster civiclens-cluster-staging \
+            --task-definition civiclens-migration-staging \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.STAGING_PRIVATE_SUBNET_ID }}],securityGroups=[${{ secrets.STAGING_ECS_SG_ID }}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          
+          aws ecs wait tasks-stopped --cluster civiclens-cluster-staging --tasks ${TASK_ARN}
+
+      - name: Deploy Staging ECS Task Revision
+        run: |
+          echo "Deploying staging ECS task revisions..."
+          aws ecs update-service --cluster civiclens-cluster-staging --service civiclens-api-staging --force-new-deployment
+          aws ecs update-service --cluster civiclens-cluster-staging --service civiclens-worker-staging --force-new-deployment
+
+      - name: Wait for Staging ECS Deployment Rollout
+        run: |
+          aws ecs wait services-stable --cluster civiclens-cluster-staging --services civiclens-api-staging civiclens-worker-staging
+
+      - name: Staging Health Check & Smoke Probe
+        run: |
+          STAGING_URL="https://${{ secrets.STAGING_DOMAIN }}/api/v1/health"
+          echo "Probing staging health endpoint: ${STAGING_URL}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${STAGING_URL} || echo "000")
+          if [ "${STATUS}" != "200" ]; then
+            echo "CRITICAL: Staging deployment health probe failed with status ${STATUS}."
+            exit 1
+          fi
+          echo "Staging deployment successfully completed."

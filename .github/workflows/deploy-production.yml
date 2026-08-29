@@ -7,7 +7,7 @@ on:
 
 jobs:
   production-deployment:
-    name: Production Deployment Pipeline (Manual Gate Required)
+    name: Production Deployment Pipeline (Manual Approval Gate)
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -18,26 +18,66 @@ jobs:
         with:
           aws-region: ap-south-1
           role-to-assume: ${{ secrets.AWS_PRODUCTION_ROLE_ARN }}
-        continue-on-error: true
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        continue-on-error: true
 
-      - name: Build and Push Production Docker Images
+      - name: Build and Push Immutable Production Container Images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          echo "Building production container images tagged with SHA: ${{ github.sha }}"
-          docker build -t civiclens-api:${{ github.sha }} -f backend/Dockerfile backend/
-          docker build -t civiclens-worker:${{ github.sha }} -f workers/Dockerfile workers/
-          docker build -t civiclens-web:${{ github.sha }} -f apps/web/Dockerfile apps/web/
-          docker build -t civiclens-admin:${{ github.sha }} -f apps/admin/Dockerfile apps/admin/
+          IMAGE_TAG="prod-${{ github.sha }}"
+          echo "Building production container images with tag: ${IMAGE_TAG}"
+          
+          docker build -t ${ECR_REGISTRY}/civiclens-api:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-api:latest -f backend/Dockerfile backend/
+          docker build -t ${ECR_REGISTRY}/civiclens-worker:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-worker:latest -f workers/Dockerfile workers/
+          docker build -t ${ECR_REGISTRY}/civiclens-web:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-web:latest -f apps/web/Dockerfile apps/web/
+          docker build -t ${ECR_REGISTRY}/civiclens-admin:${IMAGE_TAG} -t ${ECR_REGISTRY}/civiclens-admin:latest -f apps/admin/Dockerfile apps/admin/
 
-      - name: Execute Database Migrations
+          docker push ${ECR_REGISTRY}/civiclens-api:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-worker:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-web:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/civiclens-admin:${IMAGE_TAG}
+
+      - name: Execute One-Off Database Schema Migration Task
         run: |
-          echo "Running database schema migrations for production..."
+          echo "Running database schema migrations via one-off ECS migration task..."
+          TASK_ARN=$(aws ecs run-task \
+            --cluster civiclens-cluster-production \
+            --task-definition civiclens-migration-production \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ secrets.PROD_PRIVATE_SUBNET_ID }}],securityGroups=[${{ secrets.PROD_ECS_SG_ID }}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          
+          echo "Migration task launched: ${TASK_ARN}"
+          aws ecs wait tasks-stopped --cluster civiclens-cluster-production --tasks ${TASK_ARN}
+          
+          EXIT_CODE=$(aws ecs describe-tasks --cluster civiclens-cluster-production --tasks ${TASK_ARN} --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "${EXIT_CODE}" != "0" ]; then
+            echo "CRITICAL: Production database migration task failed with exit code ${EXIT_CODE}."
+            exit 1
+          fi
 
       - name: Deploy Production ECS Task Revision
         run: |
-          echo "Deploying production ECS Task revision: ${{ github.sha }}"
-          aws ecs update-service --cluster civiclens-cluster-production --service civiclens-api-service-production --force-new-deployment || echo "Cloud execution skipped due to missing AWS credentials boundary."
+          echo "Deploying production ECS services with image tag prod-${{ github.sha }}..."
+          aws ecs update-service --cluster civiclens-cluster-production --service civiclens-api-production --force-new-deployment
+          aws ecs update-service --cluster civiclens-cluster-production --service civiclens-worker-production --force-new-deployment
+
+      - name: Wait for Zero-Downtime ECS Deployment Rollout
+        run: |
+          echo "Waiting for production ECS services to reach stable state..."
+          aws ecs wait services-stable --cluster civiclens-cluster-production --services civiclens-api-production civiclens-worker-production
+
+      - name: Production Post-Deployment Health Check & Smoke Verification
+        run: |
+          PROD_URL="https://${{ secrets.PROD_DOMAIN }}/api/v1/health"
+          echo "Verifying production health check endpoint: ${PROD_URL}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${PROD_URL} || echo "000")
+          if [ "${STATUS}" != "200" ]; then
+            echo "CRITICAL: Health check failed with status code ${STATUS}. Initiating rollback..."
+            aws ecs update-service --cluster civiclens-cluster-production --service civiclens-api-production --rollback
+            exit 1
+          fi
+          echo "Production deployment and health check verified successfully."

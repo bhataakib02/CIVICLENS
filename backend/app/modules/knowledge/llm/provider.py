@@ -120,16 +120,150 @@ class DeterministicGroundedTestProvider(LLMProvider):
         }
 
 
+class OpenAILLMProvider(LLMProvider):
+    """Production LLM provider using OpenAI API."""
+
+    name = "openai"
+
+    def __init__(self, model: str = "gpt-4o") -> None:
+        import os
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model = os.getenv("OPENAI_MODEL", model)
+
+    def generate(self, prompt: str) -> str:
+        if not self.api_key:
+            raise LLMError("OpenAI API key (OPENAI_API_KEY) missing. Activation is PROVIDER-DEPENDENT.")
+        try:
+            import httpx
+
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+            }
+            with httpx.Client(timeout=30.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                res.raise_for_status()
+                return res.json()["choices"][0]["message"]["content"]
+        except Exception as exc:
+            raise LLMError(f"OpenAI generation failed: {exc}") from exc
+
+
+class AnthropicLLMProvider(LLMProvider):
+    """Production LLM provider using Anthropic Claude Messages API."""
+
+    name = "anthropic"
+
+    def __init__(self, model: str = "claude-3-5-sonnet-20241022") -> None:
+        import os
+        self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.model = os.getenv("ANTHROPIC_MODEL", model)
+
+    def generate(self, prompt: str) -> str:
+        if not self.api_key:
+            raise LLMError("Anthropic API key (ANTHROPIC_API_KEY) missing. Activation is PROVIDER-DEPENDENT.")
+        try:
+            import httpx
+
+            url = "https://api.anthropic.com/v1/messages"
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+            payload = {
+                "model": self.model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            with httpx.Client(timeout=30.0) as client:
+                res = client.post(url, headers=headers, json=payload)
+                res.raise_for_status()
+                return res.json()["content"][0]["text"]
+        except Exception as exc:
+            raise LLMError(f"Anthropic generation failed: {exc}") from exc
+
+
+class AWSBedrockLLMProvider(LLMProvider):
+    """Production LLM provider using AWS Bedrock Converse API."""
+
+    name = "aws_bedrock"
+
+    def __init__(self, model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0") -> None:
+        import os
+        self.region = os.getenv("AWS_REGION", "ap-south-1")
+        self.model_id = os.getenv("BEDROCK_MODEL_ID", model_id)
+        self.access_key = os.getenv("AWS_ACCESS_KEY_ID")
+
+    def generate(self, prompt: str) -> str:
+        if not self.access_key:
+            raise LLMError("AWS Bedrock credentials missing. Activation is PROVIDER-DEPENDENT.")
+        try:
+            import boto3
+
+            client = boto3.client("bedrock-runtime", region_name=self.region)
+            response = client.converse(
+                modelId=self.model_id,
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig={"maxTokens": 2048, "temperature": 0.1},
+            )
+            return response["output"]["message"]["content"][0]["text"]
+        except Exception as exc:
+            raise LLMError(f"AWS Bedrock generation failed: {exc}") from exc
+
+
+class OllamaLLMProvider(LLMProvider):
+    """Production LLM provider using Ollama local server."""
+
+    name = "ollama"
+
+    def __init__(self, model: str = "llama3:8b") -> None:
+        import os
+        self.host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.model = os.getenv("OLLAMA_MODEL", model)
+
+    def generate(self, prompt: str) -> str:
+        try:
+            import httpx
+
+            url = f"{self.host.rstrip('/')}/api/generate"
+            payload = {"model": self.model, "prompt": prompt, "stream": False}
+            with httpx.Client(timeout=60.0) as client:
+                res = client.post(url, json=payload)
+                res.raise_for_status()
+                return res.json()["response"]
+        except Exception as exc:
+            raise LLMError(f"Ollama generation failed: {exc}") from exc
+
+
 def get_llm_provider(settings: Settings | None = None) -> LLMProvider:
     settings = settings or get_settings()
     provider = settings.llm_provider.lower()
-    if provider == "test":
+
+    if provider in ("test", "test-deterministic"):
         if settings.is_production:
             raise LLMError(
                 "The deterministic test LLM provider must not be used in production. "
-                "Configure a real LLM_PROVIDER."
+                "Configure a real LLM_PROVIDER ('openai', 'anthropic', 'aws_bedrock', 'ollama')."
             )
         return DeterministicGroundedTestProvider()
+
+    if provider == "openai":
+        return OpenAILLMProvider()
+
+    if provider == "anthropic":
+        return AnthropicLLMProvider()
+
+    if provider in ("aws_bedrock", "bedrock"):
+        return AWSBedrockLLMProvider()
+
+    if provider == "ollama":
+        return OllamaLLMProvider()
+
     raise LLMError(
-        f"Unknown or unconfigured LLM provider '{provider}'. Bundled option: 'test' (non-production)."
+        f"Unknown or unconfigured LLM provider '{provider}'. "
+        "Supported values: 'test', 'openai', 'anthropic', 'aws_bedrock', 'ollama'."
     )
+

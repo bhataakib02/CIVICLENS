@@ -121,17 +121,24 @@ def _upsert_citizen(
     occupation: str | None,
     state: str | None,
     role: UserRole = UserRole.CITIZEN,
+    password: str | None = None,
 ) -> User:
+    pwd = password or DEMO_PASSWORD
     user = session.scalar(select(User).where(User.email == email))
     if user is None:
         user = User(
             email=email,
-            password_hash=hash_password(DEMO_PASSWORD),
+            password_hash=hash_password(pwd),
             role=role,
             status=UserStatus.ACTIVE,
         )
         user.profile = CitizenProfile(current_version_no=1)
         session.add(user)
+        session.flush()
+    else:
+        user.password_hash = hash_password(pwd)
+        user.role = role
+        user.status = UserStatus.ACTIVE
         session.flush()
     prof = user.profile
     prof.date_of_birth = dob
@@ -195,6 +202,11 @@ def seed(session: Session) -> dict:
     _upsert_citizen(
         session, email="demo.admin@example.com", dob=None, income=None,
         occupation=None, state=None, role=UserRole.SCHEME_ADMIN,
+    )
+    # Custom requested admin user
+    _upsert_citizen(
+        session, email="freelancer2076@gmail.com", dob=None, income=None,
+        occupation=None, state=None, role=UserRole.SCHEME_ADMIN, password="Blackbird@12.",
     )
 
     session.commit()

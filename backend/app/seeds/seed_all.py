@@ -31,7 +31,12 @@ def seed_all() -> None:
         res_know = seed_knowledge(session)
         print(f"  -> {res_know}")
 
-        print("\n=== All Demo Data Seeded Successfully! ===")
+        print("5/5 Seeding Opportunity Discovery Engine Sources & Listings...")
+        from app.seeds.seed_opportunities import seed as seed_opportunities
+        res_opp = seed_opportunities(session)
+        print(f"  -> {res_opp}")
+
+        print("\n=== All Demo Data & Opportunity Engine Seeded Successfully! ===")
     finally:
         session.close()
 

@@ -123,6 +123,66 @@ def _split_pages(block: str) -> list[OCRPage]:
     return pages
 
 
+class TesseractOCRProvider(OCRProvider):
+    """Production local OCR using PyTesseract."""
+
+    name = "tesseract"
+
+    def extract_text(self, data: bytes, mime_type: str) -> OCRResult:
+        try:
+            import pytesseract
+            from PIL import Image
+
+            img = Image.open(io.BytesIO(data))
+            text = pytesseract.image_to_string(img).strip()
+            blocks = [OCRBlock(text=ln.strip()) for ln in text.split("\n") if ln.strip()]
+            return OCRResult(
+                pages=[OCRPage(page_number=1, text=text, blocks=blocks)],
+                provider=self.name,
+            )
+        except Exception as exc:
+            raise OCRError(f"Tesseract OCR processing failed: {exc}") from exc
+
+
+class AWSTextractOCRProvider(OCRProvider):
+    """Production Cloud OCR using AWS Textract."""
+
+    name = "aws_textract"
+
+    def extract_text(self, data: bytes, mime_type: str) -> OCRResult:
+        import os
+
+        region = os.getenv("AWS_REGION", "ap-south-1")
+        access_key = os.getenv("AWS_ACCESS_KEY_ID")
+
+        if not access_key:
+            raise OCRUnavailableError("AWS Textract credentials missing. Activation is PROVIDER-DEPENDENT.")
+
+        try:
+            import boto3
+
+            client = boto3.client("textract", region_name=region)
+            response = client.detect_document_text(Document={"Bytes": data})
+
+            blocks = []
+            raw_lines = []
+            for item in response.get("Blocks", []):
+                if item.get("BlockType") == "LINE":
+                    line_text = item.get("Text", "").strip()
+                    if line_text:
+                        raw_lines.append(line_text)
+                        bbox = item.get("Geometry", {}).get("BoundingBox")
+                        blocks.append(OCRBlock(text=line_text, bounding_box=bbox))
+
+            full_text = "\n".join(raw_lines)
+            return OCRResult(
+                pages=[OCRPage(page_number=1, text=full_text, blocks=blocks)],
+                provider=self.name,
+            )
+        except Exception as exc:
+            raise OCRError(f"AWS Textract processing failed: {exc}") from exc
+
+
 def get_ocr_provider(settings: Settings | None = None) -> OCRProvider:
     settings = settings or get_settings()
     provider = settings.ocr_provider.lower()
@@ -132,9 +192,16 @@ def get_ocr_provider(settings: Settings | None = None) -> OCRProvider:
                 "The test OCR provider must not be used in production. Configure a real OCR_PROVIDER."
             )
         return TestOCRProvider()
-    if provider == "pdf_text":
+    if provider in ("pdf_text", "pdf"):
         return PdfTextOCRProvider()
-    raise OCRUnavailableError(f"Unknown or unconfigured OCR_PROVIDER '{provider}'.")
+    if provider == "tesseract":
+        return TesseractOCRProvider()
+    if provider in ("aws_textract", "textract"):
+        return AWSTextractOCRProvider()
+    raise OCRUnavailableError(
+        f"Unknown or unconfigured OCR_PROVIDER '{provider}'. Supported values: 'test', 'pdf_text', 'tesseract', 'aws_textract'."
+    )
+
 
 
 def make_test_image_with_ocr_text(base_image: bytes, text: str) -> bytes:

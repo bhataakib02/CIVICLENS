@@ -13,10 +13,19 @@ from app.modules.notifications.providers.base import (
     DeliveryResult,
     OutboundMessage,
 )
-from app.modules.notifications.providers.email import ConsoleEmailProvider
+from app.modules.notifications.providers.email import (
+    AWSSESEmailProvider,
+    ConsoleEmailProvider,
+    SendGridEmailProvider,
+    SMTPEmailProvider,
+)
 from app.modules.notifications.providers.in_app import InAppProvider
 from app.modules.notifications.providers.push import FakePushProvider
-from app.modules.notifications.providers.sms import FakeSMSProvider
+from app.modules.notifications.providers.sms import (
+    AWSSNSNotificationProvider,
+    FakeSMSProvider,
+    TwilioSMSNotificationProvider,
+)
 
 
 class ProviderUnavailableError(Exception):
@@ -28,6 +37,23 @@ _DEV_PROVIDERS = {
     NotificationChannel.EMAIL: {"test": ConsoleEmailProvider, "console": ConsoleEmailProvider},
     NotificationChannel.SMS: {"test": FakeSMSProvider, "fake": FakeSMSProvider},
     NotificationChannel.PUSH: {"test": FakePushProvider, "fake": FakePushProvider},
+}
+
+_PROD_PROVIDERS = {
+    NotificationChannel.EMAIL: {
+        "smtp": SMTPEmailProvider,
+        "aws_ses": AWSSESEmailProvider,
+        "ses": AWSSESEmailProvider,
+        "sendgrid": SendGridEmailProvider,
+    },
+    NotificationChannel.SMS: {
+        "aws_sns": AWSSNSNotificationProvider,
+        "sns": AWSSNSNotificationProvider,
+        "twilio": TwilioSMSNotificationProvider,
+    },
+    NotificationChannel.PUSH: {
+        "fake": FakePushProvider,
+    },
 }
 
 
@@ -54,10 +80,14 @@ def get_provider(channel: NotificationChannel, settings: Settings | None = None)
             )
         return dev[name]()
 
-    # A real provider (e.g. 'ses', 'twilio', 'fcm') would be constructed here.
+    prod = _PROD_PROVIDERS.get(channel, {})
+    if name in prod:
+        return prod[name]()
+
     raise ProviderUnavailableError(
         f"Unknown/unconfigured provider '{provider_name}' for channel {channel.value}."
     )
+
 
 
 __all__ = [

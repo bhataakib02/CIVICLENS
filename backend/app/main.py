@@ -133,6 +133,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     _register_exception_handlers(app)
 
     # Health / readiness (public, unauthenticated).
+    @app.get("/health", tags=["health"])
     @app.get(f"{API_PREFIX}/health", tags=["health"])
     def health() -> dict:
         return {"status": "ok"}
@@ -195,6 +196,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(realtime_router, prefix=API_PREFIX)
     app.include_router(admin_ops_router, prefix=API_PREFIX)
     app.include_router(agent_ops_router, prefix=API_PREFIX)
+
+    from app.modules.opportunities.router import opportunities_router
+    from app.modules.opportunities.admin_router import admin_opportunities_router
+    app.include_router(opportunities_router, prefix=API_PREFIX)
+    app.include_router(admin_opportunities_router, prefix=API_PREFIX)
 
     return app
 
