@@ -6,20 +6,39 @@ contract as a documented extension (FR-AUTH-1 allows email+password).
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegisterInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     password: str = Field(min_length=1)  # policy enforced in the service layer
 
 
 class LoginInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     password: str = Field(min_length=1)
 
 
+class OTPRequestInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    phone_number: str = Field(min_length=7, max_length=20)
+
+
+class OTPVerifyInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    phone_number: str = Field(min_length=7, max_length=20)
+    code: str = Field(min_length=1, max_length=10)
+
+
 class RefreshInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     refresh_token: str = Field(min_length=1)
 
 

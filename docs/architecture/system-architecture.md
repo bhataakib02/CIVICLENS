@@ -1,137 +1,63 @@
-# CivicLens — System Architecture
+# CivicLens — System Architecture Specification
 
-Status: v1.0 draft
-Related: component-architecture.md, data-flow.md, deployment-architecture.md, ADR-001, ADR-002, ADR-006
+This document details the high-level and component architecture of CivicLens.
 
-## 1. Architectural Style
+---
 
-CivicLens backend is a **modular monolith** (ADR-001): a single deployable
-FastAPI application internally organized into isolated modules with enforced
-boundaries, backed by PostgreSQL (+ pgvector) and Redis, with Celery workers
-for asynchronous AI/document workloads. Microservices are explicitly
-rejected for v1.0 — the team and scale don't justify the operational
-overhead; module boundaries are kept clean enough that extraction into
-services remains possible later if a specific module's load profile
-diverges sharply from the rest (most likely candidates: document
-OCR/extraction and the RAG pipeline).
+## 1. High-Level Architecture Diagram
 
-## 2. High-Level Component Diagram
+```mermaid
+graph TD
+    ClientBrowser[Citizen & CSC Agent Web UI] -->|HTTPS / WSS| ALB[AWS Application Load Balancer]
+    ALB -->|Port 8000| FastAPI[FastAPI Application Services]
+    
+    subgraph Core Backend Services
+        FastAPI --> AuthModule[Auth & OTP Module]
+        FastAPI --> CitizenModule[Citizen Profile Module]
+        FastAPI --> SchemeModule[Scheme & Rule Engine]
+        FastAPI --> DocModule[Document Intelligence]
+        FastAPI --> RAGModule[RAG & Assistant]
+        FastAPI --> AppWorkflow[Application State Machine]
+        FastAPI --> Outbox[Transactional Outbox Writer]
+    end
 
-```
-                        ┌─────────────────────────┐
-                        │   Citizen Web / PWA      │
-                        │   (apps/web)             │
-                        └────────────┬─────────────┘
-                                     │ HTTPS / JSON
-                        ┌────────────▼─────────────┐
-                        │   Admin Console           │
-                        │   (apps/admin)            │
-                        └────────────┬─────────────┘
-                                     │
-                     ┌───────────────▼────────────────┐
-                     │      API Gateway / Load         │
-                     │      Balancer (ALB)             │
-                     └───────────────┬────────────────┘
-                                     │
-                 ┌───────────────────▼───────────────────┐
-                 │      FastAPI Backend (stateless,        │
-                 │      horizontally scaled)                │
-                 │  ┌───────────────────────────────────┐  │
-                 │  │ api/v1  (routers per module)        │  │
-                 │  ├───────────────────────────────────┤  │
-                 │  │ modules/                             │
-                 │  │   auth · citizens · schemes ·        │
-                 │  │   eligibility · documents ·          │
-                 │  │   applications · notifications ·     │
-                 │  │   admin                              │
-                 │  ├───────────────────────────────────┤  │
-                 │  │ core/  (config, security, logging)  │  │
-                 │  │ db/    (session, base models)       │  │
-                 │  └───────────────────────────────────┘  │
-                 └──────┬───────────────┬───────────────┬──┘
-                        │               │               │
-             ┌──────────▼───┐   ┌───────▼──────┐  ┌─────▼──────────┐
-             │ PostgreSQL   │   │ Redis        │  │ Celery Workers  │
-             │ + pgvector   │   │ (cache/queue │  │ (ai/, workers/) │
-             │ (ADR-002)    │   │  broker)     │  │ (ADR-006)       │
-             └──────────────┘   └──────────────┘  └────────┬────────┘
-                                                             │
-                                          ┌──────────────────┼──────────────────┐
-                                          │                  │                  │
-                                 ┌────────▼─────┐  ┌─────────▼────────┐ ┌──────▼───────┐
-                                 │ OCR / Doc     │  │ Embedding /       │ │ Notification │
-                                 │ Extraction    │  │ RAG pipeline      │ │ dispatch     │
-                                 │ pipeline      │  │ (LLM provider)    │ │ (SMS/email)  │
-                                 └───────────────┘  └──────────────────┘ └──────────────┘
-                                          │
-                                 ┌────────▼─────────┐
-                                 │ Object Storage    │
-                                 │ (documents, S3)   │
-                                 │ (ADR-005)         │
-                                 └───────────────────┘
+    subgraph Data & Storage Layer
+        FastAPI --> PrimaryDB[(PostgreSQL 16 + pgvector)]
+        FastAPI --> RedisCache[(Redis 7 Cache / Rate Limiter)]
+        DocModule --> S3Bucket[(Private AWS S3 Document Storage)]
+    end
+
+    subgraph Worker & Background Execution
+        Outbox --> CeleryWorkers[Celery Worker Cluster]
+        CeleryWorkers --> OCR[OCR & Document Extraction]
+        CeleryWorkers --> Notif[SMS / Email Dispatcher]
+        CeleryWorkers --> VectorIngest[Knowledge Chunking & Embedding]
+    end
 ```
 
-## 3. Request Paths
+---
 
-### 3.1 Synchronous (API-served)
-Citizen/admin requests that must return within a normal HTTP timeout:
-auth, profile CRUD, scheme browse/search, eligibility evaluation (rule
-engine is in-process and deterministic — no external call on the critical
-path), application CRUD, notification preferences.
+## 2. Component Architectures
 
-### 3.2 Asynchronous (worker-served)
-Work that is too slow, unreliable, or bursty for the request/response cycle:
-OCR + document extraction, knowledge source ingestion + chunking +
-embedding generation, RAG generation for the assistant (streamed back to
-the client over the sync connection but computed via a worker-backed
-pipeline for retries/rate-limit handling), notification delivery
-(SMS/email providers), scheduled staleness checks on the knowledge base.
+### 2.1 Frontend Architecture
+- **Framework**: Next.js 14 App Router, React 18, TypeScript.
+- **Applications**:
+  - `apps/web`: Citizen portal for profile management, scheme discovery, eligibility assessment, AI assistant chat, document upload, application submission, and realtime notifications.
+  - `apps/admin`: CSC Console / Scheme Admin dashboard for scheme creation, rule authoring, simulation, four-eyes publish review, application case management, and audit inspection.
+- **State & Styling**: Vanilla TailwindCSS with responsive, dark-mode glassmorphic aesthetics.
 
-The API enqueues a job onto Redis (Celery broker) and returns a job/status
-reference; the client polls or receives a websocket/SSE push
-(`backend/websocket-architecture.md`) for completion.
+### 2.2 Backend Architecture
+- **Framework**: FastAPI (Python 3.11), SQLAlchemy 2.0 ORM, Pydantic v2 validation.
+- **Modularity**: Domain-driven directory organization under `backend/app/modules/` (`auth`, `citizens`, `consents`, `schemes`, `eligibility`, `documents`, `knowledge`, `applications`, `notifications`, `admin`, `audit`).
 
-## 4. Data Stores
+### 2.3 AI & Rule Engine Architecture
+- **Separation of Concerns**: AI (LLM) is purely descriptive, assisting citizens in understanding policies and searching knowledge. The **Rule Engine is 100% deterministic**, evaluating scheme eligibility AST rules against verified citizen profile facts.
+- **Vector Search**: PostgreSQL `pgvector` with HNSW cosine distance indexing over chunked official government publications.
 
-| Store | Purpose |
-|---|---|
-| PostgreSQL (primary) | All relational/domain data: users, profiles, schemes, rules, applications, audit logs |
-| pgvector (same PG instance) | `knowledge_chunks` embeddings for RAG retrieval — kept in the same database as source-of-truth data rather than a separate vector DB, to keep citation joins (chunk → source → scheme_version) transactionally consistent (ADR-002) |
-| Redis | Celery broker, response caching (eligibility result cache keyed by profile_version+scheme_version), rate limiting counters |
-| Object storage (S3-compatible) | Uploaded documents, generated application-package PDFs (ADR-005) |
+### 2.4 Document Intelligence Architecture
+- **Validation**: Strict size caps and magic byte header inspection (`%PDF-`, `\x89PNG`, `\xFF\xD8`).
+- **Processing**: Asynchronous Celery worker pipeline performing Tesseract OCR / PDF text extraction, entity parsing, confidence scoring, and fact binding.
 
-## 5. External Integrations
-
-- LLM provider (Anthropic Claude) for RAG generation and free-text →
-  structured-profile assistance. Never authoritative for eligibility
-  outcomes (NFR-AI-2).
-- OCR provider (managed OCR API, pluggable) for document text extraction.
-- SMS gateway for OTP and notifications.
-- Object storage (S3 or S3-compatible) for documents.
-- (Future / not v1.0) direct government portal APIs where available.
-
-## 6. Environments
-
-Local (Docker Compose) → staging (AWS) → production (AWS), each with
-isolated databases and object storage buckets; see
-`infrastructure/environments.md` and `infrastructure/aws-architecture.md`.
-
-## 7. Key Architectural Principles
-
-1. **Eligibility determination is deterministic and explainable.** The rule
-   engine, not the LLM, decides pass/fail. The LLM's role is limited to
-   language tasks: retrieval-grounded Q&A, extracting structured data from
-   free text/documents, and summarization — never adjudicating eligibility.
-2. **Everything citation-bearing is traceable to a versioned source.**
-   scheme_versions, eligibility_rules, and knowledge_chunks all carry
-   provenance back to a knowledge_source with an effective date range.
-3. **Module boundaries are enforced, not aspirational.** Cross-module access
-   goes through service-layer interfaces, not direct ORM queries into
-   another module's tables (see backend/module-boundaries.md).
-4. **Async by default for anything unbounded or third-party-dependent.**
-   OCR and LLM calls are never on a path that must complete within a normal
-   web request timeout, both for latency and for resilience to provider
-   outages (NFR-AVAIL-3).
-5. **PII has a shorter blast radius than everything else.** Document storage,
-   logging, and caching all treat PII as a distinct handling class (see
-   security/pii-handling.md, security/document-security.md).
+### 2.5 Event & Realtime Architecture
+- **Transactional Outbox**: Outbox records committed atomically within business database transactions.
+- **Realtime Notifications**: FastAPI WebSocket connection manager pushing live event updates to authenticated clients.

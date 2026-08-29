@@ -94,12 +94,12 @@ def update_address(
     )
 
 
-@router.delete("/me/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_address(
     address_id: uuid.UUID,
     request: Request,
     current: CurrentUser = Depends(require_authenticated_user),
     session: Session = Depends(db_session),
-) -> Response:
+):
     CitizensService(session).delete_address(current.id, address_id, ip=_client_ip(request))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

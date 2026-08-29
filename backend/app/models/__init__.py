@@ -70,6 +70,8 @@ from app.models.notification import (
     NotificationPreference,
     OutboxEvent,
 )
+from app.models.consent import ConsentRecord, ConsentType
+from app.models.otp import OTPRequest
 from app.models.refresh_token import RefreshToken
 from app.models.scheme import Scheme, SchemeVersion
 from app.models.user import User
@@ -77,6 +79,9 @@ from app.models.user import User
 __all__ = [
     "Base",
     "User",
+    "OTPRequest",
+    "ConsentRecord",
+    "ConsentType",
     "CitizenProfile",
     "CitizenProfileVersion",
     "Address",

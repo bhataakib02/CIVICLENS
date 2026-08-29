@@ -1,0 +1,29 @@
+# Node & Frontend Build Output
+node_modules/
+.next/
+dist/
+out/
+.eslintrc.json.bak
+*.tsbuildinfo
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.verify_pg*/
+pgdata/
+
+# Environment Secrets
+.env
+*.env
+!.env.example
+!.env.local.example
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

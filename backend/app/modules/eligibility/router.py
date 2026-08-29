@@ -42,3 +42,16 @@ def check_eligibility(
         ip=_ip(request),
     )
     return EligibilityResultOut(**result)
+
+
+@eligibility_router.post("/check-all", response_model=list[EligibilityResultOut])
+def check_all_eligibility(
+    request: Request,
+    current: CurrentUser = Depends(require_authenticated_user),
+    session: Session = Depends(db_session),
+) -> list[EligibilityResultOut]:
+    results = EligibilityService(session).check_all(
+        current=current,
+        ip=_ip(request),
+    )
+    return [EligibilityResultOut(**r) for r in results]

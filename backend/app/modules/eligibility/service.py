@@ -141,6 +141,55 @@ class EligibilityService:
             )
             raise
 
+    def check_all(
+        self,
+        *,
+        current: CurrentUser,
+        target_profile_id: uuid.UUID | None = None,
+        ip: str | None = None,
+    ) -> list[dict]:
+        """Bulk eligibility check across all active published schemes for a citizen.
+
+        Loads reusable citizen/profile context once, iterates active schemes,
+        evaluates deterministically, and returns ranked results.
+        """
+        if target_profile_id is not None and current.role in STAFF_ROLES:
+            profile = self._repo.get_profile(target_profile_id)
+        elif target_profile_id is not None and current.role not in STAFF_ROLES:
+            raise PermissionDeniedError("You may only evaluate your own eligibility.")
+        else:
+            profile = self._repo.get_profile_by_user_id(current.id)
+
+        if profile is None:
+            raise NotFoundError("Citizen profile not found.")
+
+        # Load context ONCE for all schemes
+        primary_address = self._repo.primary_address(profile.id)
+        today = date.today()
+
+        # Get all published scheme versions
+        from app.modules.schemes.repository import SchemesRepository
+
+        published_versions = SchemesRepository(self._session).list_all_published_versions()
+
+        results = []
+        for version in published_versions:
+            ctx = ContextBuilder().build(
+                citizen_profile=profile,
+                primary_address=primary_address,
+                evaluation_date=today,
+                scheme_version_id=version.id,
+                extra_facts={},
+            )
+            rows = self._repo.load_rules(version.id)
+            ast = rule_cache.get_or_compile(version.id, rows)
+            res: EngineResult = evaluate(ast, ctx)
+            check = self._persist(profile, version.id, res, idempotency_key=None)
+            results.append(self._to_output(check, profile_id=profile.id, scheme_id=version.scheme_id))
+
+        self._session.commit()
+        return results
+
     # ------------------------------------------------------------------ #
     def _resolve_version(self, scheme_id, scheme_version_id):
         if scheme_version_id is not None:

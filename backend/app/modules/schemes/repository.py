@@ -109,6 +109,18 @@ class SchemesRepository:
         )
         return self._session.scalars(stmt).first()
 
+    def list_all_published_versions(self) -> list[SchemeVersion]:
+        """All currently published scheme versions across the entire catalog."""
+        stmt = (
+            select(SchemeVersion)
+            .where(
+                SchemeVersion.status == SchemeVersionStatus.PUBLISHED,
+                SchemeVersion.effective_to.is_(None),
+            )
+            .order_by(SchemeVersion.created_at.desc())
+        )
+        return list(self._session.scalars(stmt))
+
     def published_versions_overlapping(
         self, scheme_id: uuid.UUID, eff_from: date, eff_to: date | None, exclude_id: uuid.UUID | None
     ) -> list[SchemeVersion]:

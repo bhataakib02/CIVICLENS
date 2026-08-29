@@ -4,6 +4,41 @@ version = "1.0.0"
 description = "CivicLens backend — AI-assisted public-service navigation platform"
 requires-python = ">=3.11"
 
+# Runtime dependencies (must match requirements.txt; pinned for reproducibility).
+dependencies = [
+    # Web framework
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "python-multipart==0.0.20",
+    # Data validation / settings
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "email-validator==2.2.0",
+    # ORM / DB
+    "SQLAlchemy==2.0.36",
+    "alembic==1.14.0",
+    "psycopg[binary]==3.2.3",
+    "pgvector==0.3.6",
+    # Knowledge / RAG ingestion
+    "pypdf==5.1.0",
+    # Security
+    "argon2-cffi==23.1.0",
+    "PyJWT==2.10.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "httpx==0.28.1",
+    "pgserver==0.1.4",
+    "PyYAML==6.0.2",
+    "anyio[trio]==4.7.0",
+    "pytest-anyio==0.0.0",
+]
+
+[tool.setuptools]
+packages = ["app"]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
@@ -15,6 +50,8 @@ markers = [
     "unit: pure-function/service unit tests (no DB)",
     "integration: tests against a real ephemeral PostgreSQL",
     "security: authn/authz and object-level access tests",
+    "concurrency: concurrent operation tests",
+    "e2e: end-to-end flow tests",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -23,3 +60,7 @@ filterwarnings = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

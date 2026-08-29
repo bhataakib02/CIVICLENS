@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  body {
+    @apply bg-console-bg text-console-text font-sans antialiased;
+  }
+
+  * {
+    @apply border-console-border;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-console-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-console-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-console-muted;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-console-surface/80 backdrop-blur-xl border border-console-border rounded-xl shadow-lg;
+  }
+  .glass-elevated {
+    @apply bg-console-elevated/90 backdrop-blur-xl border border-console-border rounded-xl shadow-xl;
+  }
+  .btn-primary {
+    @apply bg-console-accent hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg
+      transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-console-accent/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+  }
+  .btn-secondary {
+    @apply bg-console-surface hover:bg-console-elevated text-console-text font-medium px-4 py-2 rounded-lg
+      border border-console-border transition-all duration-200 ease-out active:scale-[0.98]
+      disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-console-border/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+  }
+  .btn-danger {
+    @apply bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium px-4 py-2 rounded-lg
+      border border-red-600/30 transition-all duration-200 ease-out active:scale-[0.98]
+      disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+  }
+  .input-field {
+    @apply bg-console-bg border border-console-border rounded-lg px-3 py-2 text-console-text
+      placeholder:text-console-muted focus:outline-none focus:ring-2 focus:ring-console-accent/50
+      focus:border-console-accent transition-all duration-200;
+  }
+}

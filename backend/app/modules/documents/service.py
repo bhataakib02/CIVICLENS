@@ -36,8 +36,22 @@ from app.modules.documents.storage.provider import StorageProvider
 
 logger = get_logger("civiclens.documents.service")
 
-# Extension -> mime for validating the declared upload-init mime.
 _ALLOWED_MIME = {"application/pdf": "pdf", "image/jpeg": "jpeg", "image/png": "png"}
+
+
+def _validate_magic_bytes(data: bytes, mime_type: str) -> None:
+    """Verify file magic header bytes match the declared MIME type."""
+    if not data:
+        raise ValidationError("Uploaded file is empty.")
+    if mime_type == "application/pdf":
+        if not data.startswith(b"%PDF-"):
+            raise ValidationError("File content does not match PDF format (invalid header magic bytes).")
+    elif mime_type == "image/png":
+        if not data.startswith(b"\x89PNG"):
+            raise ValidationError("File content does not match PNG format (invalid header magic bytes).")
+    elif mime_type == "image/jpeg":
+        if not data.startswith(b"\xff\xd8"):
+            raise ValidationError("File content does not match JPEG format (invalid header magic bytes).")
 
 
 class DocumentsService:
@@ -145,6 +159,13 @@ class DocumentsService:
             self._session.commit()
             raise ValidationError("Uploaded file exceeds maximum size.")
 
+        try:
+            _validate_magic_bytes(data, document.mime_type)
+        except ValidationError:
+            document.status = DocumentStatus.VALIDATION_FAILED
+            self._session.commit()
+            raise
+
         sha256 = hashlib.sha256(data).hexdigest()
         # Duplicate detection (policy: flag, do NOT auto-delete the new upload).
         duplicate = self._repo.find_duplicate(document.citizen_profile_id, sha256)
@@ -239,6 +260,8 @@ class DocumentsService:
             )
         if len(data) > self._s.document_max_size_bytes:
             raise ValidationError("File exceeds maximum size.")
+
+        _validate_magic_bytes(data, mime)
         profile_id = self._require_profile(current)
         document_id = uuid.uuid4()
         storage_key = generate_storage_key(

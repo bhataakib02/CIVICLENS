@@ -26,6 +26,12 @@ class AuditAction:
     TOKEN_REFRESH = "auth.token_refresh"
     TOKEN_REUSE_DETECTED = "auth.token_reuse_detected"
     LOGOUT = "auth.logout"
+    OTP_REQUEST = "auth.otp_request"
+    OTP_VERIFY_SUCCESS = "auth.otp_verify_success"
+    OTP_VERIFY_FAILURE = "auth.otp_verify_failure"
+    # Consent management.
+    CONSENT_GRANTED = "consent.granted"
+    CONSENT_REVOKED = "consent.revoked"
     PROFILE_UPDATE = "citizen.profile_update"
     ADDRESS_CREATE = "citizen.address_create"
     ADDRESS_UPDATE = "citizen.address_update"

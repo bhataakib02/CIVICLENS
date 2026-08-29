@@ -124,6 +124,39 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.environment == "production"
 
+    def validate_production_config(self) -> None:
+        """Enforce strict production configuration boundaries (Prompt §5, §63, §64).
+
+        Fails startup if development defaults or insecure providers are detected in production.
+        """
+        if not self.is_production:
+            return
+
+        errors: list[str] = []
+
+        if self.jwt_secret_key.startswith("dev-only") or len(self.jwt_secret_key) < 32:
+            errors.append("JWT_SECRET_KEY is insecure or using development default.")
+
+        if "*" in self.cors_origins:
+            errors.append("CORS_ORIGINS contains wildcard '*' which is forbidden in production.")
+
+        if self.storage_provider.lower() == "local":
+            errors.append("STORAGE_PROVIDER='local' is forbidden in production; must use 's3'.")
+
+        if self.ocr_provider.lower() == "test":
+            errors.append("OCR_PROVIDER='test' (mock provider) is forbidden in production.")
+
+        if self.submission_provider.lower() == "mock":
+            errors.append("SUBMISSION_PROVIDER='mock' is forbidden in production.")
+
+        if self.otp_provider.lower() == "test":
+            errors.append("OTP_PROVIDER='test' (fixed OTP code) is forbidden in production.")
+
+        if errors:
+            raise ValueError(
+                "CRITICAL PRODUCTION CONFIGURATION FAILURE:\n - " + "\n - ".join(errors)
+            )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

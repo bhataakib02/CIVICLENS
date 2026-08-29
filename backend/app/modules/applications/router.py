@@ -66,11 +66,14 @@ def _scheme_id_of(session: Session, app: Application) -> str:
     return str(v.scheme_id) if v else ""
 
 
+from app.modules.applications.state_machine import all_transitions, to_public_status
+
+
 def _to_summary(session: Session, app: Application) -> ApplicationSchema:
     return ApplicationSchema(
         id=str(app.id), application_number=app.application_number,
         scheme_id=_scheme_id_of(session, app), scheme_version_id=str(app.scheme_version_id),
-        status=app.status.value, created_at=app.created_at, submitted_at=app.submitted_at,
+        status=to_public_status(app.status), created_at=app.created_at, submitted_at=app.submitted_at,
     )
 
 
@@ -211,6 +214,27 @@ def complete_application(
     app = ApplicationsService(session).complete(current=current, application_id=application_id)
     dispatch_outbox_now()
     return _assemble_detail(session, app, current)
+
+
+from fastapi.responses import Response
+
+
+@applications_router.get("/{application_id}/export", response_class=Response)
+def export_application(
+    application_id: uuid.UUID,
+    current: CurrentUser = Depends(require_user),
+    session: Session = Depends(db_session),
+):
+    from app.modules.applications.pdf_package import generate_application_pdf
+
+    # Verify authorization
+    ApplicationsService(session).get(current=current, application_id=application_id)
+    pdf_bytes = generate_application_pdf(session, application_id)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=application_{application_id}.pdf"},
+    )
 
 
 # --------------------------------- assembly --------------------------------- #

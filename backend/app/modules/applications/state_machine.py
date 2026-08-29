@@ -92,3 +92,28 @@ def is_terminal(status) -> bool:
 
 def all_transitions() -> dict[S, set[S]]:
     return {k: set(v) for k, v in _TRANSITIONS.items()}
+
+
+_PUBLIC_STATUS_MAP: dict[S, str] = {
+    S.DRAFT: "draft",
+    S.READY_FOR_SUBMISSION: "draft",
+    S.SUBMISSION_PENDING: "submitted",
+    S.SUBMISSION_FAILED: "draft",
+    S.SUBMITTED: "submitted",
+    S.UNDER_REVIEW: "under_review",
+    S.ACTION_REQUIRED: "info_requested",
+    S.INFO_REQUESTED: "info_requested",
+    S.APPROVED: "approved",
+    S.REJECTED: "rejected",
+    S.WITHDRAWN: "withdrawn",
+    S.COMPLETED: "approved",
+}
+
+
+def to_public_status(status: S | str) -> str:
+    """Map internal state machine status to canonical public status.
+
+    Public enum: draft, submitted, under_review, info_requested, approved, rejected, withdrawn.
+    """
+    s = _coerce(status)
+    return _PUBLIC_STATUS_MAP.get(s, s.value)

@@ -20,9 +20,12 @@ from app.db.session import db_session
 from app.modules.auth.dependencies import CurrentUser, require_authenticated_user
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
+from app.modules.auth.otp_service import OTPService
 from app.schemas.auth import (
     LoginInput,
     MeResponse,
+    OTPRequestInput,
+    OTPVerifyInput,
     RefreshInput,
     RegisterInput,
     TokenPair,
@@ -36,6 +39,25 @@ def _client_ip(request: Request) -> str | None:
     if request.client:
         return request.client.host
     return None
+
+
+@auth_router.post("/otp/request", status_code=status.HTTP_202_ACCEPTED)
+def request_otp(
+    body: OTPRequestInput,
+    request: Request,
+    session: Session = Depends(db_session),
+) -> dict[str, str]:
+    OTPService(session).request_otp(body.phone_number, ip=_client_ip(request))
+    return {"message": "OTP dispatched successfully."}
+
+
+@auth_router.post("/otp/verify", response_model=TokenPair)
+def verify_otp(
+    body: OTPVerifyInput,
+    request: Request,
+    session: Session = Depends(db_session),
+) -> TokenPair:
+    return OTPService(session).verify_otp(body.phone_number, body.code, ip=_client_ip(request))
 
 
 @auth_router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
@@ -57,6 +79,7 @@ def login(
 
 
 @auth_router.post("/refresh", response_model=TokenPair)
+@auth_router.post("/token/refresh", response_model=TokenPair)
 def refresh(
     body: RefreshInput,
     request: Request,
@@ -65,14 +88,14 @@ def refresh(
     return AuthService(session).refresh(body.refresh_token, ip=_client_ip(request))
 
 
-@auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def logout(
     request: Request,
     body: RefreshInput | None = None,
     all: bool = False,
     current: CurrentUser = Depends(require_authenticated_user),
     session: Session = Depends(db_session),
-) -> Response:
+):
     raw = body.refresh_token if body else None
     AuthService(session).logout(
         raw, current.id, all_sessions=all, ip=_client_ip(request)

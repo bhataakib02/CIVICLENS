@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: civiclens-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: civiclens
+      POSTGRES_USER: civiclens
+      POSTGRES_PASSWORD: civiclens_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civiclens -d civiclens"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: civiclens-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civiclens-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://civiclens:civiclens_dev_password@postgres:5432/civiclens
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-only-insecure-change-me-please-0000000000000000000000000000
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: .document_storage
+      OCR_PROVIDER: test
+      EXTRACTION_PROVIDER: test
+      MALWARE_SCANNER_PROVIDER: test
+      SUBMISSION_PROVIDER: mock
+      OTP_PROVIDER: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: civiclens-worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://civiclens:civiclens_dev_password@postgres:5432/civiclens
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-only-insecure-change-me-please-0000000000000000000000000000
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: .document_storage
+      OCR_PROVIDER: test
+      EXTRACTION_PROVIDER: test
+      MALWARE_SCANNER_PROVIDER: test
+      SUBMISSION_PROVIDER: mock
+      OTP_PROVIDER: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: civiclens-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      - api
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+    container_name: civiclens-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

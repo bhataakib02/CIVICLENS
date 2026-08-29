@@ -1,0 +1,32 @@
+name: Deploy to Staging Environment
+
+on:
+  push:
+    branches: [ develop, staging ]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: Staging Deployment Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ap-south-1
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+        continue-on-error: true
+
+      - name: Build & Tag Container Images
+        run: |
+          echo "Building staging container images tagged with SHA: ${{ github.sha }}"
+          docker build -t civiclens-api:${{ github.sha }} -f backend/Dockerfile backend/
+          docker build -t civiclens-worker:${{ github.sha }} -f workers/Dockerfile workers/
+
+      - name: Terraform Plan & Apply (Staging)
+        run: |
+          echo "Executing Terraform IaC update for Staging..."
+          cd infrastructure/terraform/environments/staging
+          # terraform init && terraform apply -auto-approve

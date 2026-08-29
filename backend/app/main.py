@@ -26,6 +26,7 @@ from app.db.session import get_sessionmaker
 from app.modules.auth.router import auth_router, me_router
 from app.modules.citizens.router import router as citizens_router
 from app.modules.applications.router import applications_router
+from app.modules.consents.router import consents_router
 from app.modules.documents.router import documents_router
 from app.modules.eligibility.router import eligibility_router
 from app.modules.knowledge.router import assistant_router, knowledge_router
@@ -39,6 +40,7 @@ from app.modules.schemes.router import (
     scheme_versions_router,
     schemes_router,
 )
+from app.modules.admin.router import admin_ops_router, agent_ops_router
 
 logger = get_logger("civiclens.app")
 
@@ -105,6 +107,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
+    settings.validate_production_config()
     configure_logging(logging.INFO)
 
     app = FastAPI(
@@ -178,6 +181,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router, prefix=API_PREFIX)
     app.include_router(me_router, prefix=API_PREFIX)
     app.include_router(citizens_router, prefix=API_PREFIX)
+    app.include_router(consents_router, prefix=API_PREFIX)
     app.include_router(schemes_router, prefix=API_PREFIX)
     app.include_router(scheme_versions_router, prefix=API_PREFIX)
     app.include_router(admin_schemes_router, prefix=API_PREFIX)
@@ -189,6 +193,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(notifications_router, prefix=API_PREFIX)
     app.include_router(me_notifications_router, prefix=API_PREFIX)
     app.include_router(realtime_router, prefix=API_PREFIX)
+    app.include_router(admin_ops_router, prefix=API_PREFIX)
+    app.include_router(agent_ops_router, prefix=API_PREFIX)
 
     return app
 

@@ -25,6 +25,7 @@ from app.db.session import db_session
 from app.models.enums import SchemeScope
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.schemes.dependencies import require_reader, require_scheme_admin
+from app.modules.eligibility.simulation import RuleSimulationInput, RuleSimulationResult
 from app.modules.schemes.repository import SchemesRepository
 from app.modules.schemes.service import SchemesService
 from app.schemas.scheme import (
@@ -174,6 +175,21 @@ def publish_version(
 
 
 @admin_schemes_router.post(
+    "/scheme-versions/{scheme_version_id}/submit-for-review", response_model=SchemeVersionOut
+)
+def submit_for_review(
+    scheme_version_id: uuid.UUID,
+    request: Request,
+    current: CurrentUser = Depends(require_scheme_admin),
+    session: Session = Depends(db_session),
+) -> SchemeVersionOut:
+    version = SchemesService(session).submit_for_review(
+        version_id=scheme_version_id, actor_user_id=current.id, ip=_ip(request)
+    )
+    return _version_out(version)
+
+
+@admin_schemes_router.post(
     "/scheme-versions/{scheme_version_id}/supersede", response_model=SchemeVersionOut
 )
 def supersede_version(
@@ -231,6 +247,17 @@ def validate_rules(
     return RuleValidateResult(
         valid=True, normalized_rule_count=count, message="Rule set is valid."
     )
+
+
+@admin_schemes_router.post("/eligibility/simulate", response_model=RuleSimulationResult)
+def simulate_rules(
+    body: RuleSimulationInput,
+    current: CurrentUser = Depends(require_scheme_admin),
+    session: Session = Depends(db_session),
+) -> RuleSimulationResult:
+    from app.modules.eligibility.simulation import RuleSimulationService
+
+    return RuleSimulationService(session).simulate(current, body)
 
 
 # --------------------------------- mappers ---------------------------------- #

@@ -185,6 +185,35 @@ class SchemesService:
                 code="ILLEGAL_VERSION_TRANSITION",
             )
 
+    def submit_for_review(
+        self, *, version_id: uuid.UUID, actor_user_id: uuid.UUID, ip: str | None = None
+    ) -> SchemeVersion:
+        """Transition a draft version to in_review for the four-eyes workflow."""
+        version = self.get_version(version_id)
+        if version.status != SchemeVersionStatus.DRAFT:
+            raise ConflictError(
+                f"Only draft versions can be submitted for review (was {version.status.value}).",
+                code="ILLEGAL_VERSION_TRANSITION",
+            )
+        # Must have at least one rule
+        if not self._repo.list_rules(version.id):
+            raise ConflictError(
+                "Cannot submit a version with no eligibility rules.",
+                code="VERSION_HAS_NO_RULES",
+            )
+        version.status = SchemeVersionStatus.IN_REVIEW
+        self._audit.record(
+            action="scheme_version.submit_for_review",
+            entity_type="scheme_version",
+            entity_id=version.id,
+            actor_user_id=actor_user_id,
+            diff={"version_no": version.version_no},
+            ip=ip,
+        )
+        self._session.commit()
+        self._session.refresh(version)
+        return version
+
     def publish_version(
         self, *, version_id: uuid.UUID, actor_user_id: uuid.UUID, ip: str | None = None
     ) -> SchemeVersion:

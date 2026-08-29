@@ -28,6 +28,10 @@ class AuthRepository:
         stmt = select(User).where(User.email == email)
         return self._session.scalar(stmt)
 
+    def get_user_by_phone(self, phone: str) -> User | None:
+        stmt = select(User).where(User.phone_number == phone)
+        return self._session.scalar(stmt)
+
     def add_user(self, user: User) -> User:
         self._session.add(user)
         self._session.flush()
