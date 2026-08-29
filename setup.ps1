@@ -6,7 +6,7 @@ Write-Host "=== CivicLens Local Environment Setup ===" -ForegroundColor Green
 # 1. Locate Python 3.11+
 $pyExe = $null
 if (Get-Command py -ErrorAction SilentlyContinue) {
-    $ver = & py -3.11 --version 2>&1
+    $null = & py -3.11 --version 2>&1
     if ($LASTEXITCODE -eq 0) {
         $pyExe = "py -3.11"
         Write-Host "Found Python 3.11 via py launcher" -ForegroundColor Cyan
