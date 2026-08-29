@@ -1,0 +1,772 @@
+openapi: 3.1.0
+info:
+  title: CivicLens API
+  version: 1.0.0
+  description: >
+    AI-assisted public-service navigation API. Eligibility determinations are
+    always produced by the deterministic rule engine (see
+    docs/ai/eligibility-engine.md); the assistant endpoints are
+    retrieval-grounded and always cite sources.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      security: []
+      responses:
+        "200": { description: Service is alive }
+
+  /health/ready:
+    get:
+      summary: Readiness check
+      security: []
+      responses:
+        "200": { description: Service is ready }
+        "503": { description: Service is not ready }
+
+  # ---------- Auth ----------
+  /auth/otp/request:
+    post:
+      summary: Request an OTP for phone-based login/registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_number]
+              properties:
+                phone_number: { type: string }
+      responses:
+        "202": { description: OTP dispatched }
+        "429": { description: Rate limited, $ref: '#/components/responses/RateLimited' }
+
+  /auth/otp/verify:
+    post:
+      summary: Verify OTP and issue tokens (registers account if new)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_number, code]
+              properties:
+                phone_number: { type: string }
+                code: { type: string }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/token/refresh:
+    post:
+      summary: Exchange a refresh token for a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      summary: Revoke the current refresh token (or all, with all=true)
+      parameters:
+        - in: query
+          name: all
+          schema: { type: boolean, default: false }
+      responses:
+        "204": { description: Logged out }
+
+  # ---------- Citizen profile ----------
+  /me:
+    get:
+      summary: Get the current citizen's profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CitizenProfile' }
+    patch:
+      summary: Update profile fields (progressive profiling)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CitizenProfileUpdate' }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CitizenProfile' }
+        "422": { $ref: '#/components/responses/ValidationError' }
+
+  /me/addresses:
+    get:
+      summary: List the current citizen's addresses
+      responses:
+        "200":
+          description: Addresses
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Address' }
+    post:
+      summary: Add an address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Address' }
+
+  # ---------- Schemes ----------
+  /schemes:
+    get:
+      summary: Browse/search schemes
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Full-text / semantic search query
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: scope
+          schema: { type: string, enum: [central, state] }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200":
+          description: Paginated scheme list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemePage' }
+
+  /schemes/{scheme_id}:
+    get:
+      summary: Get scheme detail (current published version)
+      parameters:
+        - $ref: '#/components/parameters/SchemeIdParam'
+      responses:
+        "200":
+          description: Scheme detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeDetail' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ---------- Eligibility ----------
+  /eligibility/check:
+    post:
+      summary: Evaluate eligibility for the current citizen against one scheme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheme_id]
+              properties:
+                scheme_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Eligibility result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EligibilityResult' }
+        "422": { $ref: '#/components/responses/ValidationError' }
+
+  /eligibility/check-all:
+    post:
+      summary: Bulk eligibility check across the active scheme catalog
+      responses:
+        "200":
+          description: Ranked eligibility results
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EligibilityResult' }
+
+  # ---------- Assistant ----------
+  /assistant/messages:
+    post:
+      summary: Ask the assistant a free-text question (retrieval-grounded)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+                conversation_id: { type: string, format: uuid, nullable: true }
+      responses:
+        "200":
+          description: Assistant response with citations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssistantResponse' }
+
+  # ---------- Documents ----------
+  /documents:
+    get:
+      summary: List the current citizen's documents
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Document' }
+    post:
+      summary: Upload a document for OCR/extraction (multipart)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, document_type]
+              properties:
+                file: { type: string, format: binary }
+                document_type: { type: string }
+      responses:
+        "202":
+          description: Accepted for async processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+
+  /documents/{document_id}:
+    get:
+      summary: Get a document's status and extraction result
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Document with extraction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /documents/{document_id}/confirm:
+    post:
+      summary: Citizen confirms (or corrects) extracted fields
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                corrected_fields:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200": { description: Confirmed }
+
+  # ---------- Applications ----------
+  /applications:
+    get:
+      summary: List the current citizen's applications
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200":
+          description: Paginated applications
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationPage' }
+    post:
+      summary: Start an application for a scheme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheme_id]
+              properties:
+                scheme_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Draft application created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        "409":
+          description: Citizen is not eligible / likely_eligible for this scheme
+
+  /applications/{application_id}:
+    get:
+      summary: Get application detail including status history
+      parameters:
+        - $ref: '#/components/parameters/ApplicationIdParam'
+      responses:
+        "200":
+          description: Application detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationDetail' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /applications/{application_id}/submit:
+    post:
+      summary: Submit a completed application (validates completeness)
+      parameters:
+        - $ref: '#/components/parameters/ApplicationIdParam'
+      responses:
+        "200": { description: Submitted }
+        "422":
+          description: Application incomplete (missing documents/fields)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /applications/{application_id}/withdraw:
+    post:
+      summary: Withdraw an application prior to a terminal status
+      parameters:
+        - $ref: '#/components/parameters/ApplicationIdParam'
+      responses:
+        "200": { description: Withdrawn }
+
+  /applications/{application_id}/export:
+    get:
+      summary: Export the application package as PDF
+      parameters:
+        - $ref: '#/components/parameters/ApplicationIdParam'
+      responses:
+        "200":
+          description: PDF package
+          content:
+            application/pdf: {}
+
+  # ---------- Notifications ----------
+  /notifications:
+    get:
+      summary: List notifications for the current citizen
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notification' }
+
+  /notifications/preferences:
+    get:
+      summary: Get notification channel/category preferences
+      responses:
+        "200": { description: Preferences }
+    patch:
+      summary: Update notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200": { description: Updated }
+
+  # ---------- Admin (scheme_admin / admin roles) ----------
+  /admin/schemes/{scheme_id}/versions:
+    post:
+      summary: Create a new draft scheme_version
+      parameters:
+        - $ref: '#/components/parameters/SchemeIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchemeVersionInput' }
+      responses:
+        "201":
+          description: Draft version created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeVersion' }
+
+  /admin/scheme-versions/{scheme_version_id}/publish:
+    post:
+      summary: Publish a reviewed scheme_version (requires second reviewer)
+      parameters:
+        - name: scheme_version_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Published }
+        "403": { description: Publisher must differ from author (four-eyes rule) }
+
+  /admin/knowledge-sources:
+    get:
+      summary: List knowledge sources and ingestion status
+      responses:
+        "200": { description: Knowledge sources }
+    post:
+      summary: Register a new knowledge source for ingestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KnowledgeSourceInput' }
+      responses:
+        "202": { description: Queued for ingestion }
+
+  /admin/audit-logs:
+    get:
+      summary: Query audit logs
+      parameters:
+        - in: query
+          name: actor_user_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200": { description: Audit log page }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    SchemeIdParam:
+      name: scheme_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ApplicationIdParam:
+      name: application_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Request failed validation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            request_id: { type: string }
+            field_errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+
+    TokenPair:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, example: bearer }
+        expires_in: { type: integer }
+
+    CitizenProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        date_of_birth: { type: string, format: date, nullable: true }
+        gender: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        occupation: { type: string, nullable: true }
+        declared_annual_income: { type: number, nullable: true }
+        disability_status: { type: boolean, nullable: true }
+        family_size: { type: integer, nullable: true }
+        profile_completeness: { type: number, description: "0-1, drives progressive profiling prompts" }
+        current_version_no: { type: integer }
+
+    CitizenProfileUpdate:
+      type: object
+      description: Any subset of CitizenProfile's editable fields
+      additionalProperties: true
+
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [permanent, current] }
+        state: { type: string }
+        district: { type: string }
+        pincode: { type: string }
+        line1: { type: string }
+
+    AddressInput:
+      type: object
+      required: [type, state, district, pincode, line1]
+      properties:
+        type: { type: string, enum: [permanent, current] }
+        state: { type: string }
+        district: { type: string }
+        pincode: { type: string }
+        line1: { type: string }
+
+    SchemePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SchemeSummary' }
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+
+    SchemeSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        canonical_name: { type: string }
+        category: { type: string }
+        scope: { type: string, enum: [central, state] }
+        benefits_summary: { type: string }
+
+    SchemeDetail:
+      allOf:
+        - $ref: '#/components/schemas/SchemeSummary'
+        - type: object
+          properties:
+            administering_dept: { type: string }
+            document_requirements:
+              type: array
+              items: { $ref: '#/components/schemas/DocumentRequirement' }
+            last_verified_at: { type: string, format: date-time }
+            scheme_version_id: { type: string, format: uuid }
+
+    DocumentRequirement:
+      type: object
+      properties:
+        document_type: { type: string }
+        is_mandatory: { type: boolean }
+        notes: { type: string, nullable: true }
+
+    SchemeVersionInput:
+      type: object
+      required: [benefits_summary, effective_from]
+      properties:
+        benefits_summary: { type: string }
+        effective_from: { type: string, format: date }
+        knowledge_source_id: { type: string, format: uuid }
+
+    SchemeVersion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        scheme_id: { type: string, format: uuid }
+        version_no: { type: integer }
+        status: { type: string, enum: [draft, in_review, published, superseded, archived] }
+
+    EligibilityResult:
+      type: object
+      properties:
+        scheme_id: { type: string, format: uuid }
+        scheme_version_id: { type: string, format: uuid }
+        result: { type: string, enum: [eligible, not_eligible, likely_eligible, insufficient_data] }
+        computed_at: { type: string, format: date-time }
+        rule_breakdown:
+          type: array
+          items: { $ref: '#/components/schemas/RuleOutcome' }
+
+    RuleOutcome:
+      type: object
+      properties:
+        rule_id: { type: string, format: uuid }
+        field_key: { type: string }
+        outcome: { type: string, enum: [pass, fail, unknown] }
+        explanation: { type: string }
+        source_citation:
+          type: object
+          properties:
+            knowledge_source_id: { type: string, format: uuid }
+            section: { type: string }
+
+    AssistantResponse:
+      type: object
+      properties:
+        conversation_id: { type: string, format: uuid }
+        answer: { type: string }
+        citations:
+          type: array
+          items:
+            type: object
+            properties:
+              knowledge_source_id: { type: string, format: uuid }
+              title: { type: string }
+              section: { type: string }
+        eligibility_tool_calls:
+          type: array
+          items: { $ref: '#/components/schemas/EligibilityResult' }
+          description: Present when the assistant invoked the deterministic engine to answer an eligibility question
+
+    Document:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        document_type: { type: string }
+        status: { type: string, enum: [uploaded, processing, verified, rejected] }
+        uploaded_at: { type: string, format: date-time }
+
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            extracted_fields: { type: object, additionalProperties: true }
+            confidence: { type: number }
+            verified_by_citizen: { type: boolean }
+
+    ApplicationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Application' }
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+
+    Application:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        scheme_id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, submitted, under_review, info_requested, approved, rejected, withdrawn] }
+        created_at: { type: string, format: date-time }
+        submitted_at: { type: string, format: date-time, nullable: true }
+
+    ApplicationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Application'
+        - type: object
+          properties:
+            status_history:
+              type: array
+              items:
+                type: object
+                properties:
+                  from_status: { type: string, nullable: true }
+                  to_status: { type: string }
+                  note: { type: string, nullable: true }
+                  created_at: { type: string, format: date-time }
+            attached_documents:
+              type: array
+              items: { $ref: '#/components/schemas/Document' }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        channel: { type: string, enum: [sms, email, in_app] }
+        category: { type: string, enum: [scheme_match, status_change, doc_reverification, deadline_reminder] }
+        status: { type: string, enum: [queued, sent, failed] }
+        sent_at: { type: string, format: date-time, nullable: true }
+
+    KnowledgeSourceInput:
+      type: object
+      required: [title, url, publisher]
+      properties:
+        title: { type: string }
+        url: { type: string, format: uri }
+        publisher: { type: string }
+        published_date: { type: string, format: date }

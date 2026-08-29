@@ -1,0 +1,25 @@
+[project]
+name = "civiclens-backend"
+version = "1.0.0"
+description = "CivicLens backend — AI-assisted public-service navigation platform"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra -q"
+markers = [
+    "unit: pure-function/service unit tests (no DB)",
+    "integration: tests against a real ephemeral PostgreSQL",
+    "security: authn/authz and object-level access tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

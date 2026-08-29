@@ -1,0 +1,141 @@
+"""ORM models package.
+
+Importing this package registers every model on the shared metadata, which
+Alembic autogenerate and create_all rely on.
+"""
+from app.db.base import Base
+from app.models.address import Address
+from app.models.audit_log import AuditLog
+from app.models.citizen_profile import CitizenProfile, CitizenProfileVersion
+from app.models.application import (
+    Application,
+    ApplicationAction,
+    ApplicationAssignment,
+    ApplicationDocument,
+    ApplicationStatusHistory,
+    ApplicationSubmission,
+)
+from app.models.document import (
+    Document,
+    DocumentExtractedField,
+    DocumentExtraction,
+    DocumentProcessingJob,
+    DocumentVerification,
+)
+from app.models.document_requirement import DocumentRequirement
+from app.models.eligibility import EligibilityCheck, EligibilityRule
+from app.models.enums import (
+    ActionRequiredStatus,
+    AddressType,
+    ApplicationStatus,
+    AssignmentAction,
+    ChecklistItemStatus,
+    ConfidenceLevel,
+    DocumentStatus,
+    DocumentType,
+    EligibilityResult,
+    FactSource,
+    FieldValueType,
+    FieldVerificationStatus,
+    IngestionJobStatus,
+    NotificationCategory,
+    NotificationChannel,
+    NotificationPriority,
+    NotificationStatus,
+    DeliveryErrorCode,
+    DomainEventType,
+    PreferredLanguage,
+    OutboxStatus,
+    ProcessingJobStatus,
+    ReviewAction,
+    SchemeScope,
+    SchemeVersionStatus,
+    SourceTrustLevel,
+    SourceType,
+    SubmissionMethod,
+    SubmissionStatus,
+    UserRole,
+    UserStatus,
+    VerificationStatus,
+)
+from app.models.knowledge import (
+    EMBEDDING_DIM,
+    IngestionJob,
+    KnowledgeChunk,
+    KnowledgeSource,
+)
+from app.models.notification import (
+    DeadLetterEvent,
+    Notification,
+    NotificationPreference,
+    OutboxEvent,
+)
+from app.models.refresh_token import RefreshToken
+from app.models.scheme import Scheme, SchemeVersion
+from app.models.user import User
+
+__all__ = [
+    "Base",
+    "User",
+    "CitizenProfile",
+    "CitizenProfileVersion",
+    "Address",
+    "RefreshToken",
+    "AuditLog",
+    "Scheme",
+    "SchemeVersion",
+    "EligibilityRule",
+    "EligibilityCheck",
+    "KnowledgeSource",
+    "KnowledgeChunk",
+    "IngestionJob",
+    "EMBEDDING_DIM",
+    "Document",
+    "DocumentProcessingJob",
+    "DocumentExtraction",
+    "DocumentExtractedField",
+    "DocumentVerification",
+    "DocumentRequirement",
+    "Application",
+    "ApplicationDocument",
+    "ApplicationStatusHistory",
+    "ApplicationSubmission",
+    "ApplicationAssignment",
+    "ApplicationAction",
+    "Notification",
+    "NotificationPreference",
+    "DeadLetterEvent",
+    "OutboxEvent",
+    "UserRole",
+    "UserStatus",
+    "AddressType",
+    "SchemeScope",
+    "SchemeVersionStatus",
+    "EligibilityResult",
+    "SourceType",
+    "SourceTrustLevel",
+    "VerificationStatus",
+    "IngestionJobStatus",
+    "DocumentType",
+    "DocumentStatus",
+    "ProcessingJobStatus",
+    "ConfidenceLevel",
+    "FactSource",
+    "FieldValueType",
+    "FieldVerificationStatus",
+    "ApplicationStatus",
+    "SubmissionStatus",
+    "SubmissionMethod",
+    "ReviewAction",
+    "AssignmentAction",
+    "ActionRequiredStatus",
+    "ChecklistItemStatus",
+    "NotificationChannel",
+    "NotificationCategory",
+    "NotificationStatus",
+    "NotificationPriority",
+    "DomainEventType",
+    "DeliveryErrorCode",
+    "PreferredLanguage",
+    "OutboxStatus",
+]

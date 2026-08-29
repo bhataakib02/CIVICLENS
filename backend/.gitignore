@@ -1,0 +1,17 @@
+# Secrets — never commit a real environment file.
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Local test / verification artifacts
+.verify_pgdata/
+pgdata/
