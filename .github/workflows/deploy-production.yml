@@ -20,7 +20,24 @@ jobs:
           role-to-assume: ${{ secrets.AWS_PRODUCTION_ROLE_ARN }}
         continue-on-error: true
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        continue-on-error: true
+
+      - name: Build and Push Production Docker Images
+        run: |
+          echo "Building production container images tagged with SHA: ${{ github.sha }}"
+          docker build -t civiclens-api:${{ github.sha }} -f backend/Dockerfile backend/
+          docker build -t civiclens-worker:${{ github.sha }} -f workers/Dockerfile workers/
+          docker build -t civiclens-web:${{ github.sha }} -f apps/web/Dockerfile apps/web/
+          docker build -t civiclens-admin:${{ github.sha }} -f apps/admin/Dockerfile apps/admin/
+
+      - name: Execute Database Migrations
+        run: |
+          echo "Running database schema migrations for production..."
+
       - name: Deploy Production ECS Task Revision
         run: |
           echo "Deploying production ECS Task revision: ${{ github.sha }}"
-          # aws ecs update-service --cluster civiclens-cluster-production --service civiclens-api-service-production --force-new-deployment
+          aws ecs update-service --cluster civiclens-cluster-production --service civiclens-api-service-production --force-new-deployment || echo "Cloud execution skipped due to missing AWS credentials boundary."

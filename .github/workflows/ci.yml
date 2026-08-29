@@ -28,17 +28,19 @@ jobs:
           pip install ruff
           ruff check backend/app
 
-      - name: Typecheck Citizen Web App
+      - name: Typecheck & Test Citizen Web App
         run: |
           cd apps/web
           npm ci
           npm run typecheck
+          npm run test
 
-      - name: Typecheck Admin Console App
+      - name: Typecheck & Test Admin Console App
         run: |
           cd apps/admin
           npm ci
           npm run typecheck
+          npm run test
 
   backend-tests:
     name: Backend Pytest Suite (Postgres+pgvector & Redis)
@@ -116,7 +118,7 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
   docker-build-verification:

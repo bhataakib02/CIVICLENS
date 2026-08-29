@@ -275,6 +275,19 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SchemePage' }
+    post:
+      summary: Create a new scheme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchemeCreate' }
+      responses:
+        "201":
+          description: Scheme created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeDetail' }
 
   /schemes/{scheme_id}:
     get:
@@ -288,6 +301,123 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SchemeDetail' }
         "404": { $ref: '#/components/responses/NotFound' }
+
+  /schemes/{scheme_id}/versions:
+    get:
+      summary: List all versions of a scheme
+      parameters:
+        - name: scheme_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: List of scheme versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchemeVersion' }
+    post:
+      summary: Create a new draft version of a scheme
+      parameters:
+        - name: scheme_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchemeVersionInput' }
+      responses:
+        "201":
+          description: Draft version created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeVersion' }
+
+  /scheme-versions/{scheme_version_id}/rules:
+    get:
+      summary: Get eligibility rules for a scheme version
+      parameters:
+        - name: scheme_version_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: List of eligibility rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EligibilityRule' }
+    post:
+      summary: Update eligibility rules for a scheme version
+      parameters:
+        - name: scheme_version_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RuleSetInput' }
+      responses:
+        "200":
+          description: Rules updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EligibilityRule' }
+
+  /admin/scheme-versions/{scheme_version_id}/publish:
+    post:
+      summary: Publish a scheme version (Four-eyes requirement enforced)
+      parameters:
+        - name: scheme_version_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeVersion' }
+
+  /admin/scheme-versions/{scheme_version_id}/supersede:
+    post:
+      summary: Supersede a published scheme version
+      parameters:
+        - name: scheme_version_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Superseded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchemeVersion' }
+
+  /admin/rules/validate:
+    post:
+      summary: Validate AST eligibility rule structure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RuleSetInput' }
+      responses:
+        "200":
+          description: Rule validation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuleValidateResult' }
 
   # ---------- Eligibility ----------
   /eligibility/check:
@@ -322,7 +452,103 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/EligibilityResult' }
 
+  # ---------- Knowledge ----------
+  /knowledge/search:
+    post:
+      summary: Perform hybrid semantic search on knowledge sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/KnowledgeSearchResult' }
+
+  /knowledge/sources:
+    get:
+      summary: List knowledge sources
+      responses:
+        "200":
+          description: List of knowledge sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/KnowledgeSource' }
+    post:
+      summary: Register a new knowledge source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KnowledgeSourceInput' }
+      responses:
+        "201":
+          description: Knowledge source created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KnowledgeSource' }
+
+  /knowledge/jobs/{job_id}:
+    get:
+      summary: Get ingestion job status
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Ingestion job status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngestionJob' }
+
+  /knowledge/sources/{source_id}/verify:
+    post:
+      summary: Verify a knowledge source
+      parameters:
+        - name: source_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KnowledgeSource' }
+
   # ---------- Assistant ----------
+  /assistant/query:
+    post:
+      summary: Query the assistant for grounded public service assistance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+      responses:
+        "200":
+          description: Assistant response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssistantResponse' }
+
   /assistant/messages:
     post:
       summary: Ask the assistant a free-text question (retrieval-grounded)
@@ -797,6 +1023,47 @@ components:
         pincode: { type: string }
         line1: { type: string }
 
+    SchemeCreate:
+      type: object
+      required: [canonical_name, category, scope]
+      properties:
+        canonical_name: { type: string }
+        category: { type: string }
+        scope: { type: string, enum: [central, state] }
+        benefits_summary: { type: string }
+        administering_dept: { type: string }
+
+    KnowledgeSource:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        url: { type: string, format: uri }
+        publisher: { type: string }
+        published_date: { type: string, format: date }
+
+    IngestionJob:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, processing, completed, failed] }
+        error_message: { type: string, nullable: true }
+
+    RuleSetInput:
+      type: object
+      properties:
+        rules:
+          type: array
+          items: { $ref: '#/components/schemas/EligibilityRule' }
+
+    RuleValidateResult:
+      type: object
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items: { type: string }
+
     SchemePage:
       type: object
       properties:
@@ -850,6 +1117,22 @@ components:
         scheme_id: { type: string, format: uuid }
         version_no: { type: integer }
         status: { type: string, enum: [draft, in_review, published, superseded, archived] }
+
+    EligibilityRule:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        field_key: { type: string }
+        operator: { type: string }
+        operand: { type: object }
+
+    KnowledgeSearchResult:
+      type: object
+      properties:
+        chunk_id: { type: string, format: uuid }
+        title: { type: string }
+        content: { type: string }
+        score: { type: number }
 
     EligibilityResult:
       type: object

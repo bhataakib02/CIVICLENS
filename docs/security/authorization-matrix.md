@@ -1,19 +1,32 @@
-# CivicLens — Authorization Matrix
+# CIVICLENS AUTHORIZATION MATRIX
 
-Status: v1.1 Hardened Specification
-Related: security-audit.md, threat-model.md, authorization-model.md
+**Version:** v1.0.0-rc.2  
+**Date:** 2026-08-29  
 
-## Resource Authorization Matrix
+---
 
-| Resource | Citizen | Agent | Scheme Admin | Admin | Enforcement Mechanism |
-|---|---|---|---|---|---|
-| **Own Profile** | R/W | Scoped (with active consent) | No | Restricted / Policy | Ownership check (`user_id == citizen_profile_id`) |
-| **Own Documents** | R/W | Scoped (with active consent) | No | Restricted | Ownership check & signed S3 URL authorization |
-| **Own Applications** | R/W | Scoped (with active consent) | No | Restricted | Ownership check & state machine permissions |
-| **Citizen Records** | Own only | Consented citizens only | Restricted | Policy / Audit logged | Service layer consent check & active token filter |
-| **Schemes Catalog** | R | Limited / Read | R/W (Drafts) | R/W | Role check (`scheme_admin` / `admin`) |
-| **Eligibility Rules** | R | No | R/W (Drafts) | Policy | Four-eyes check (`author_id != reviewer_id`) |
-| **Audit Logs** | No | No | Limited | R | Admin role assertion (`role == "admin"`) |
-| **System Config** | No | No | No | R/W | System Admin role assertion (`role == "admin"`) |
+## Endpoint RBAC & Scope Permissions
 
-*Legend: R = Read, W = Write, Scoped = Restricted to consented citizen profiles with active non-expired consent token.*
+| Endpoint Path | HTTP Method | Citizen | Agent | Scheme Admin | Admin | Auth Requirement |
+|:---|:---:|:---:|:---:|:---:|:---:|:---|
+| `/api/v1/auth/otp/request` | POST | Public | Public | Public | Public | Unauthenticated |
+| `/api/v1/auth/otp/verify` | POST | Public | Public | Public | Public | Unauthenticated |
+| `/api/v1/citizens/profile` | GET / PUT | Allowed (Self) | Allowed (With Consent) | Denied | Denied | Bearer JWT (Scope: `profile:read/write`) |
+| `/api/v1/schemes` | GET | Allowed | Allowed | Allowed | Allowed | Bearer JWT |
+| `/api/v1/schemes` | POST | Denied | Denied | Allowed | Allowed | Bearer JWT (Role: `scheme_admin`, `admin`) |
+| `/api/v1/schemes/{id}/publish` | POST | Denied | Denied | Allowed (Four-eyes check) | Allowed (Four-eyes check) | Bearer JWT (`author_id != reviewer_id`) |
+| `/api/v1/eligibility/evaluate` | POST | Allowed (Self) | Allowed (Assisted) | Denied | Denied | Deterministic Rule Engine |
+| `/api/v1/documents/upload` | POST | Allowed | Allowed | Denied | Denied | Magic-byte & MIME check, scan |
+| `/api/v1/applications` | POST | Allowed | Allowed | Denied | Denied | Idempotency Key required |
+| `/api/v1/applications/{id}/review` | POST | Denied | Allowed | Denied | Allowed | Role: `agent`, `admin` |
+| `/api/v1/audit/logs` | GET | Denied | Denied | Denied | Allowed | Role: `admin` |
+| `/api/v1/system/health` | GET | Public | Public | Public | Public | Public Readiness check |
+
+---
+
+## Security Invariants
+
+1. **Consent-Gated Agent Access:** Agents attempting to view Citizen PII without active, unexpired, matching consent receive `403 Forbidden` (`CONSENT_REQUIRED`).
+2. **Four-Eyes Scheme Approval:** The creator of a scheme version (`author_id`) cannot approve or publish their own version (`403 Forbidden: FOUR_EYES_VIOLATION`).
+3. **Immutability of Published Schemes:** Once a scheme version moves to `PUBLISHED`, direct mutations are rejected; new revisions require creating a `DRAFT` version.
+4. **Idempotent Application Submission:** Application submissions require an `X-Idempotency-Key` header to prevent duplicate application state creation.

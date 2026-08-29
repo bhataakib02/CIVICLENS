@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     email_provider: str = Field(default="test")
     sms_provider: str = Field(default="test")
     push_provider: str = Field(default="test")
+    otp_provider: str = Field(default="test", alias="OTP_PROVIDER")
 
     # --- Event worker / outbox (prompt §31, §50) ---
     outbox_worker_batch_size: int = Field(default=50, ge=1)

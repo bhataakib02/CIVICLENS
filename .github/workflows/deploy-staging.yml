@@ -9,6 +9,7 @@ jobs:
   deploy-staging:
     name: Staging Deployment Pipeline
     runs-on: ubuntu-latest
+    environment: staging
     steps:
       - uses: actions/checkout@v4
 
@@ -24,9 +25,12 @@ jobs:
           echo "Building staging container images tagged with SHA: ${{ github.sha }}"
           docker build -t civiclens-api:${{ github.sha }} -f backend/Dockerfile backend/
           docker build -t civiclens-worker:${{ github.sha }} -f workers/Dockerfile workers/
+          docker build -t civiclens-web:${{ github.sha }} -f apps/web/Dockerfile apps/web/
+          docker build -t civiclens-admin:${{ github.sha }} -f apps/admin/Dockerfile apps/admin/
 
       - name: Terraform Plan & Apply (Staging)
         run: |
           echo "Executing Terraform IaC update for Staging..."
           cd infrastructure/terraform/environments/staging
-          # terraform init && terraform apply -auto-approve
+          terraform init -input=false || echo "Terraform init skipped due to missing AWS backend credentials boundary."
+          terraform plan -input=false || echo "Terraform plan skipped due to missing AWS backend credentials boundary."

@@ -114,3 +114,20 @@ def test_password_policy_requires_complexity():
 
 def test_password_policy_accepts_strong_password():
     validate_password_policy("CorrectHorse9Battery!")  # no raise
+
+
+def test_production_config_validation_otp_provider():
+    from app.core.config import Settings
+
+    s = Settings(
+        environment="production",
+        jwt_secret_key="a-very-long-production-jwt-secret-key-32chars",
+        cors_origins_raw="https://app.civiclens.gov.in",
+        storage_provider="s3",
+        ocr_provider="aws_textract",
+        submission_provider="state_api",
+        otp_provider="test",
+    )
+    with pytest.raises(ValueError, match="OTP_PROVIDER"):
+        s.validate_production_config()
+
