@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
 import { requestOtp } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
@@ -67,6 +68,13 @@ export function LoginForm({ onOtpSent }: LoginFormProps) {
           {t.auth.sendOtp}
         </Button>
       </form>
+
+      <div className="mt-6 pt-4 border-t border-slate-100 text-center text-sm text-slate-600">
+        New to CivicLens?{' '}
+        <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-800 hover:underline">
+          Create an Account
+        </Link>
+      </div>
     </div>
   );
 }

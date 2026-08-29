@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { CitizenProfile } from '@/types/api';
 import { tokenStore } from './tokens';
-import { verifyOtp, logout } from '../api/auth';
+import { verifyOtp, loginWithEmail, registerUser, logout } from '../api/auth';
 import { getProfile } from '../api/me';
 
 interface AuthContextType {
@@ -11,6 +11,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   loginWithOtp: (phoneNumber: string, code: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerUser: (email: string, password: string) => Promise<void>;
   logoutUser: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -60,6 +62,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithEmailHandler = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const tokens = await loginWithEmail(email, password);
+      tokenStore.setTokens(tokens.access_token, tokens.refresh_token);
+      const profile = await getProfile();
+      setUser(profile);
+    } catch (err) {
+      tokenStore.clearTokens();
+      setUser(null);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const registerUserHandler = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const tokens = await registerUser(email, password);
+      tokenStore.setTokens(tokens.access_token, tokens.refresh_token);
+      const profile = await getProfile();
+      setUser(profile);
+    } catch (err) {
+      tokenStore.clearTokens();
+      setUser(null);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logoutUserHandler = async () => {
     try {
       await logout();
@@ -78,6 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         loginWithOtp: loginWithOtpHandler,
+        loginWithEmail: loginWithEmailHandler,
+        registerUser: registerUserHandler,
         logoutUser: logoutUserHandler,
         refreshProfile: fetchProfile
       }}

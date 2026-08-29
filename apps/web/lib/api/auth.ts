@@ -25,8 +25,17 @@ export async function loginWithEmail(email: string, password: string): Promise<T
   });
 }
 
+export async function registerUser(email: string, password: string): Promise<TokenPair> {
+  return apiClient<TokenPair>('/auth/register', {
+    method: 'POST',
+    skipAuth: true,
+    body: { email, password }
+  });
+}
+
 export async function logout(all = false): Promise<void> {
   await apiClient(`/auth/logout?all=${all}`, {
     method: 'POST'
   });
 }
+

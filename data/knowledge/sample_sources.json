@@ -1,0 +1,26 @@
+[
+  {
+    "_comment": "FICTIONAL DEMO KNOWLEDGE SOURCE — sanitized sample government-style document for ingestion testing.",
+    "title": "Demo Income Support Scheme Guidelines 2025 (FICTIONAL)",
+    "url": "https://demo.civiclens.gov.in/knowledge/income-support-guidelines.pdf",
+    "publisher": "CivicLens Demo Directorate (fictional)",
+    "source_type": "pdf",
+    "trust_level": "official_government",
+    "verification_status": "verified",
+    "content_type": "application/pdf",
+    "scheme_code": "CIVIC-DEMO-001",
+    "sample_text": "CIVICLENS DEMO KNOWLEDGE SOURCE — FICTIONAL CONTENT FOR TESTING ONLY.\n\nSection 1: Overview\nThe Demo Income Support Scheme provides direct financial benefit to eligible households residing within the state. The primary objective is to offer social security protection to low-income families.\n\nSection 2: Eligibility Criteria\n1. Annual Household Income: Must be less than or equal to ₹2,50,000 per annum as verified by an official Income Certificate.\n2. Age Limit: Applicants must be 18 years of age or older on the date of application.\n3. Residence: Must hold a valid Domicile / Residence Certificate of the state.\n\nSection 3: Mandatory Documents\nApplicants must submit:\na) Aadhaar Card / Identity Proof\nb) State Income Certificate (issued within 1 year)\nc) Residence Proof / Domicile Certificate\nd) Bank Account Details for Direct Benefit Transfer (DBT)."
+  },
+  {
+    "_comment": "FICTIONAL DEMO KNOWLEDGE SOURCE — unemployment aid policy document.",
+    "title": "Demo Unemployment Assistance Framework (FICTIONAL)",
+    "url": "https://demo.civiclens.gov.in/knowledge/unemployment-aid-policy.html",
+    "publisher": "CivicLens Demo Labour Commission (fictional)",
+    "source_type": "html",
+    "trust_level": "official_government",
+    "verification_status": "verified",
+    "content_type": "text/html",
+    "scheme_code": "CIVIC-DEMO-002",
+    "sample_text": "CIVICLENS DEMO KNOWLEDGE SOURCE — FICTIONAL CONTENT FOR TESTING ONLY.\n\nSection 1: Objective\nTo provide temporary financial relief and skill improvement opportunities to educated unemployed youth.\n\nSection 2: Key Conditions\n- Must be registered with the State Employment Exchange.\n- Must not be engaged in any formal employment or self-employment.\n- Age must be between 18 and 60 years."
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "_comment": "FICTIONAL SYNTHETIC DOCUMENT METADATA — used for OCR & extraction pipeline testing.",
+    "document_id": "doc-demo-aadhaar-001",
+    "document_type": "aadhaar",
+    "filename": "synthetic_aadhaar_card.pdf",
+    "mime_type": "application/pdf",
+    "size_bytes": 245000,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "simulated_ocr_text": "GOVERNMENT OF INDIA\nAadhaar Card\nName: Priya Sharma\nDOB: 15/03/1995\nGender: Female\nAadhaar Number: 9999 8888 7777\nAddress: H.No 123, MG Road, Pune, Maharashtra - 411001",
+    "expected_extractions": {
+      "full_name": { "raw_value": "Priya Sharma", "confidence": 0.98 },
+      "date_of_birth": { "raw_value": "15/03/1995", "normalized_value": "1995-03-15", "confidence": 0.95 },
+      "gender": { "raw_value": "Female", "normalized_value": "female", "confidence": 0.99 },
+      "state": { "raw_value": "Maharashtra", "confidence": 0.96 }
+    }
+  },
+  {
+    "_comment": "FICTIONAL SYNTHETIC DOCUMENT METADATA — income certificate testing.",
+    "document_id": "doc-demo-income-002",
+    "document_type": "income_certificate",
+    "filename": "synthetic_income_cert.png",
+    "mime_type": "image/png",
+    "size_bytes": 512000,
+    "sha256": "8f4e2a1b9c3d5e7f0a6b4c8d2e1f9a3b5c7d1e3f5a7b9c1d3e5f7a9b1c3d5e7f",
+    "simulated_ocr_text": "OFFICE OF THE TAHSHILDAR\nINCOME CERTIFICATE\nCertificate No: INC/2025/98765\nThis is to certify that annual income of Rajesh Kumar, S/O Ram Kumar, resident of Lucknow, Uttar Pradesh is Rs 45,000 (Forty Five Thousand Only).\nIssued Date: 10/01/2025",
+    "expected_extractions": {
+      "applicant_name": { "raw_value": "Rajesh Kumar", "confidence": 0.94 },
+      "annual_income": { "raw_value": "Rs 45,000", "normalized_value": "45000.00", "confidence": 0.92 },
+      "issuing_authority": { "raw_value": "TAHSHILDAR", "confidence": 0.90 },
+      "issue_date": { "raw_value": "10/01/2025", "normalized_value": "2025-01-10", "confidence": 0.91 }
+    }
+  }
+]

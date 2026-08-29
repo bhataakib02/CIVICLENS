@@ -1,0 +1,150 @@
+[
+  {
+    "_comment": "FICTIONAL DEMO SCHEME — income support (tests income + age + residence operators).",
+    "scheme": {
+      "code": "CIVIC-DEMO-001",
+      "canonical_name": "Demo State Income Support Scheme (FICTIONAL)",
+      "category": "social_welfare",
+      "administering_dept": "CivicLens Demo Social Welfare Directorate (fictional)",
+      "scope": "state"
+    },
+    "version": {
+      "version_no": 1,
+      "status": "published",
+      "benefits_summary": "Monthly stipend of ₹1,500 for eligible low-income residents (FICTIONAL — not a real scheme).",
+      "effective_from": "2025-04-01",
+      "effective_to": null
+    },
+    "eligibility_rules": [
+      {
+        "field": "declared_annual_income",
+        "operator": "lte",
+        "value": "250000",
+        "description": "Annual income must not exceed ₹2,50,000"
+      },
+      {
+        "field": "date_of_birth",
+        "operator": "age_gte",
+        "value": "18",
+        "description": "Applicant must be 18 years or older"
+      },
+      {
+        "field": "state",
+        "operator": "eq",
+        "value": "Maharashtra",
+        "description": "Must be a resident of the state"
+      }
+    ]
+  },
+  {
+    "_comment": "FICTIONAL DEMO SCHEME — unemployment aid (tests employment status + age range).",
+    "scheme": {
+      "code": "CIVIC-DEMO-002",
+      "canonical_name": "Demo Unemployment Assistance (FICTIONAL)",
+      "category": "employment",
+      "administering_dept": "CivicLens Demo Labour Commission (fictional)",
+      "scope": "central"
+    },
+    "version": {
+      "version_no": 1,
+      "status": "published",
+      "benefits_summary": "Six-month financial support of ₹3,000/month for unemployed adults (FICTIONAL).",
+      "effective_from": "2025-01-01",
+      "effective_to": null
+    },
+    "eligibility_rules": [
+      {
+        "field": "occupation",
+        "operator": "eq",
+        "value": "unemployed",
+        "description": "Must be currently unemployed"
+      },
+      {
+        "field": "date_of_birth",
+        "operator": "age_gte",
+        "value": "18",
+        "description": "Must be at least 18 years old"
+      },
+      {
+        "field": "date_of_birth",
+        "operator": "age_lte",
+        "value": "60",
+        "description": "Must be 60 or younger"
+      }
+    ]
+  },
+  {
+    "_comment": "FICTIONAL DEMO SCHEME — disability pension (tests disability_status + income).",
+    "scheme": {
+      "code": "CIVIC-DEMO-003",
+      "canonical_name": "Demo Disability Support Pension (FICTIONAL)",
+      "category": "disability",
+      "administering_dept": "CivicLens Demo Disability Affairs (fictional)",
+      "scope": "central"
+    },
+    "version": {
+      "version_no": 1,
+      "status": "published",
+      "benefits_summary": "Monthly pension of ₹2,500 for persons with disabilities (FICTIONAL).",
+      "effective_from": "2025-04-01",
+      "effective_to": null
+    },
+    "eligibility_rules": [
+      {
+        "field": "disability_status",
+        "operator": "eq",
+        "value": "true",
+        "description": "Applicant must have a certified disability"
+      },
+      {
+        "field": "declared_annual_income",
+        "operator": "lte",
+        "value": "500000",
+        "description": "Annual income must not exceed ₹5,00,000"
+      }
+    ]
+  },
+  {
+    "_comment": "FICTIONAL DEMO SCHEME — SC/ST scholarship (tests category + education + age).",
+    "scheme": {
+      "code": "CIVIC-DEMO-004",
+      "canonical_name": "Demo SC/ST Merit Scholarship (FICTIONAL)",
+      "category": "education",
+      "administering_dept": "CivicLens Demo Education Ministry (fictional)",
+      "scope": "central"
+    },
+    "version": {
+      "version_no": 1,
+      "status": "published",
+      "benefits_summary": "Annual scholarship of ₹25,000 for SC/ST students in higher education (FICTIONAL).",
+      "effective_from": "2025-07-01",
+      "effective_to": "2026-06-30"
+    },
+    "eligibility_rules": [
+      {
+        "field": "category",
+        "operator": "in",
+        "value": ["scheduled_caste", "scheduled_tribe"],
+        "description": "Must belong to Scheduled Caste or Scheduled Tribe category"
+      },
+      {
+        "field": "occupation",
+        "operator": "eq",
+        "value": "student",
+        "description": "Must be a current student"
+      },
+      {
+        "field": "date_of_birth",
+        "operator": "age_lte",
+        "value": "30",
+        "description": "Must be 30 years or younger"
+      },
+      {
+        "field": "declared_annual_income",
+        "operator": "lte",
+        "value": "250000",
+        "description": "Family annual income must not exceed ₹2,50,000"
+      }
+    ]
+  }
+]
