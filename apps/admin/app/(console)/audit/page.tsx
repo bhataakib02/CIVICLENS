@@ -32,23 +32,26 @@ export default function AuditPage() {
   }, [page]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-console-text tracking-tight font-mono">Immutable Audit Log Inspection</h1>
-          <p className="text-xs text-console-muted mt-1">
-            Read-only, append-only system trail. Modification or deletion of audit logs is prohibited.
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="bg-white dark:bg-slate-900/90 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-indigo-500" />
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Immutable Audit Log Inspection</h1>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Read-only, append-only system trail. Modification or deletion of audit logs is strictly prohibited.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
+        <div className="flex items-center space-x-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-2 rounded-2xl">
           <Lock className="h-4 w-4" />
           <span>Strict Read-Only Enforcement</span>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
           {error}
         </div>
       )}

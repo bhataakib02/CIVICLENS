@@ -17,21 +17,21 @@ export function SourceTable({ sources, onSelect }: SourceTableProps) {
       accessorKey: 'title',
       cell: (item) => (
         <div className="flex items-center space-x-2">
-          <BookOpen className="h-4 w-4 text-console-accent" />
-          <span className="font-semibold text-console-text truncate max-w-xs">{item.title}</span>
+          <BookOpen className="h-4 w-4 text-indigo-500" />
+          <span className="font-bold text-slate-900 dark:text-white truncate max-w-xs">{item.title}</span>
         </div>
       ),
     },
     {
       header: 'Publisher / Department',
       accessorKey: 'publisher',
-      cell: (item) => <span className="font-mono text-xs text-console-muted">{item.publisher || 'Official Govt'}</span>,
+      cell: (item) => <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{item.publisher || 'Official Govt'}</span>,
     },
     {
       header: 'Trust Level',
       accessorKey: 'trust_level',
       cell: (item) => (
-        <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+        <span className="inline-flex items-center text-[10px] font-mono px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 font-bold">
           <ShieldCheck className="h-3 w-3 mr-1" />
           {item.trust_level.toUpperCase()}
         </span>
@@ -45,7 +45,7 @@ export function SourceTable({ sources, onSelect }: SourceTableProps) {
     {
       header: 'Ingested Date',
       accessorKey: 'created_at',
-      cell: (item) => <span className="font-mono">{formatDate(item.created_at)}</span>,
+      cell: (item) => <span className="font-mono text-slate-600 dark:text-slate-400">{formatDate(item.created_at)}</span>,
     },
   ];
 

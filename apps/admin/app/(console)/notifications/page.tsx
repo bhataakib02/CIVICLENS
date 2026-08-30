@@ -75,15 +75,18 @@ export default function NotificationOpsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-console-text tracking-tight">Notification Delivery Operations</h1>
-          <p className="text-xs text-console-muted mt-1">Monitor notification pipeline, inspect delivery error codes, and trigger retries</p>
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="bg-white dark:bg-slate-900/90 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-1">
+        <div className="flex items-center gap-2">
+          <Bell className="w-5 h-5 text-indigo-500" />
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Notification Delivery Operations</h1>
         </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Monitor notification pipeline, inspect delivery error codes, and trigger retries.
+        </p>
       </div>
 
-      <div className="glass-card p-4">
+      <div className="bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
         <FilterBar
           filters={filterOptions}
           onFilterChange={(key, val) => {
@@ -100,7 +103,7 @@ export default function NotificationOpsPage() {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
           {error}
         </div>
       )}
