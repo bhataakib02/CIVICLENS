@@ -81,14 +81,17 @@ class OpportunityRepository:
         self.session.commit()
         self.session.refresh(opp)
 
-        # Create version 1
+        # Create version 1 with JSON-serializable payload
+        json_payload = data.model_dump(mode="json")
+        json_payload["content_hash"] = content_hash
         v1 = OpportunityVersion(
             opportunity_id=opp.id,
             version_number=1,
-            payload=opp_dict,
+            payload=json_payload,
             diff={"action": "created"},
         )
         self.session.add(v1)
+
 
         # Create primary link
         if opp.application_url or opp.source_url:
@@ -284,4 +287,36 @@ class OpportunityRepository:
         self.session.commit()
         self.session.refresh(track)
         return track
+
+    # --- Notification Deduplication ---
+
+    def is_alert_duplicate(self, user_id: uuid.UUID, opportunity_id: uuid.UUID, alert_type: str, version: int = 1) -> bool:
+        """Check if alert notification already sent for user_id + opportunity_id + alert_type + version."""
+        existing = (
+            self.session.query(OpportunityAlert)
+            .filter(
+                and_(
+                    OpportunityAlert.user_id == user_id,
+                    OpportunityAlert.opportunity_id == opportunity_id,
+                    OpportunityAlert.alert_type == alert_type,
+                    OpportunityAlert.opportunity_version == version,
+                )
+            )
+            .first()
+        )
+        return existing is not None
+
+    def record_alert(self, user_id: uuid.UUID, opportunity_id: uuid.UUID, alert_type: str, message: str, version: int = 1) -> OpportunityAlert:
+        """Record alert notification sent to user for deduplication auditing."""
+        alert = OpportunityAlert(
+            user_id=user_id,
+            opportunity_id=opportunity_id,
+            alert_type=alert_type,
+            opportunity_version=version,
+            message=message,
+        )
+        self.session.add(alert)
+        self.session.commit()
+        self.session.refresh(alert)
+        return alert
 

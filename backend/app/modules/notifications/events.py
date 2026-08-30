@@ -25,6 +25,17 @@ class AggregateType:
     DOCUMENT = "DOCUMENT"
     ELIGIBILITY = "ELIGIBILITY"
     SCHEME_VERSION = "SCHEME_VERSION"
+    OPPORTUNITY = "OPPORTUNITY"
+
+
+def _clean_payload(obj):
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _clean_payload(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_clean_payload(x) for x in obj]
+    return obj
 
 
 @dataclass
@@ -49,12 +60,14 @@ class EventEnvelope:
             "aggregate_type": self.aggregate_type,
             "aggregate_id": self.aggregate_id,
             "actor_id": self.actor_id,
-            "payload": self.payload,
+            "payload": _clean_payload(self.payload),
             "schema_version": self.schema_version,
             "correlation_id": self.correlation_id,
             "causation_id": self.causation_id,
             "occurred_at": self.occurred_at,
         }
+
+
 
 
 def parse_event_type(value: str) -> DomainEventType:

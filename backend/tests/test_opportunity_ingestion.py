@@ -43,9 +43,41 @@ def test_quality_scorer():
         has_eligibility=True,
         has_application_url=True,
         extraction_confidence=1.0,
+        opp_type=OpportunityType.GOVERNMENT_SCHEME,
     )
-    assert score >= 0.75
+    assert score >= 0.85
     assert decision == "AUTO_PUBLISH"
+
+
+def test_tiered_quality_scorer_cutoff():
+    # Score 0.78 for private company -> AUTO_PUBLISH (cutoff 0.75)
+    score_p, decision_p = QualityScorer.calculate_quality_score(
+        authority_level=OpportunityAuthorityLevel.KNOWN_PRIVATE,
+        has_title=True,
+        has_org=True,
+        has_deadline=True,
+        has_eligibility=True,
+        has_application_url=True,
+        extraction_confidence=0.8,
+        opp_type=OpportunityType.JOB,
+    )
+    assert score_p >= 0.75
+    assert decision_p == "AUTO_PUBLISH"
+
+    # Score 0.78 for official government source -> REVIEW_QUEUE (cutoff 0.85)
+    score_g, decision_g = QualityScorer.calculate_quality_score(
+        authority_level=OpportunityAuthorityLevel.OFFICIAL,
+        has_title=True,
+        has_org=True,
+        has_deadline=False,
+        has_eligibility=False,
+        has_application_url=False,
+        extraction_confidence=0.8,
+        opp_type=OpportunityType.GOVERNMENT_SCHEME,
+    )
+    assert score_g < 0.85
+    assert decision_g == "REVIEW_QUEUE"
+
 
 
 def test_link_validator_classification():

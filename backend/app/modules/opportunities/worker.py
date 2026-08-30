@@ -30,6 +30,8 @@ def run_scheduled_crawls(session: Session | None = None) -> dict:
 
 def run_link_verifications(session: Session | None = None) -> dict:
     """Verify application links and mark dead links invalid (prompt §24)."""
+    from app.core.metrics import metrics
+
     session = session or get_sessionmaker()()
     try:
         validator = LinkValidator()
@@ -47,6 +49,8 @@ def run_link_verifications(session: Session | None = None) -> dict:
             verified_count += 1
 
         session.commit()
+        if broken_count > 0:
+            metrics.incr("opportunity_link_failures_total", broken_count)
         logger.info("link_verifications_completed", extra={"verified": verified_count, "broken": broken_count})
         return {"verified": verified_count, "broken": broken_count}
     finally:
@@ -55,11 +59,14 @@ def run_link_verifications(session: Session | None = None) -> dict:
 
 def run_deadline_status_updates(session: Session | None = None) -> dict:
     """Recalculate deadline statuses for active opportunities (prompt §16)."""
+    from app.core.metrics import metrics
+
     session = session or get_sessionmaker()()
     try:
         now = datetime.now(timezone.utc)
         opps = session.query(Opportunity).filter(Opportunity.status != OpportunityDeadlineStatus.CLOSED).all()
         updated_count = 0
+        closed_count = 0
 
         for opp in opps:
             new_status = DateClassifier.calculate_status(
@@ -69,14 +76,21 @@ def run_deadline_status_updates(session: Session | None = None) -> dict:
                 now=now,
             )
             if opp.status != new_status:
+                if new_status == OpportunityDeadlineStatus.CLOSED:
+                    closed_count += 1
                 opp.status = new_status
                 updated_count += 1
 
         session.commit()
-        logger.info("deadline_status_updates_completed", extra={"updated": updated_count})
-        return {"updated": updated_count}
+        if closed_count > 0:
+            metrics.incr("opportunity_closed_total", closed_count)
+        if updated_count > 0:
+            metrics.incr("opportunity_updated_total", updated_count)
+        logger.info("deadline_status_updates_completed", extra={"updated": updated_count, "closed": closed_count})
+        return {"updated": updated_count, "closed": closed_count}
     finally:
         session.close()
+
 
 
 def start_worker_loop(poll_interval_seconds: int = 60) -> None:

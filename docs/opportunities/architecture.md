@@ -37,3 +37,7 @@ Citizen Explorer & Admin Control Console
 1. **Defensible Scope**: CivicLens never claims to index "the entire internet." All listings explicitly show `Indexed Sources`, `Verified Sources`, `Last Crawl Time`, and `Last Verification Time`.
 2. **Official Redirection Interstitial**: CivicLens never submits applications on behalf of citizens. The citizen is routed directly to the verified official portal via an explicit interstitial modal.
 3. **Continuous 30-Minute Scheduler**: Background worker processes sources every 30 minutes using distributed Redis locks (`DistributedCrawlLock`) and incremental content hash change detection.
+4. **Realtime Outbox Events**: Published opportunities emit `OPPORTUNITY_PUBLISHED` to the transactional outbox (`outbox_events`), streaming live feed updates via WebSockets/SSE to connected citizens.
+5. **Notification Deduplication**: Alerts are deduplicated on `opportunity_id + user_id + notification_type + opportunity_version` to prevent redundant notifications per crawl cycle.
+6. **Observability Stack**: Ingestion and crawler metrics (`opportunity_crawl_runs_total`, `opportunity_discovered_total`, `opportunity_crawl_failures_total`, `opportunity_link_failures_total`, `opportunity_crawl_duration_seconds`) are exported through `app.core.metrics`.
+

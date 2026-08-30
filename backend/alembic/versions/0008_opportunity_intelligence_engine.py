@@ -111,8 +111,13 @@ def upgrade() -> None:
         sa.Column("crawl_policy", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
         sa.Column("crawl_frequency", sa.String(50), nullable=False, server_default="daily"),
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("health_status", sa.String(50), nullable=False, server_default="HEALTHY"),
+        sa.Column("consecutive_failures", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("last_crawl_started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_crawl_completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_crawled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_successful_crawl_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_failed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
@@ -240,11 +245,30 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("opportunity_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False),
         sa.Column("alert_type", sa.String(50), nullable=False),
+        sa.Column("opportunity_version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("sent_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("opportunity_id", "user_id", "alert_type", "opportunity_version", name="uq_opportunity_alert_dedup"),
     )
     op.create_index("ix_opportunity_alerts_user_id", "opportunity_alerts", ["user_id"])
     op.create_index("ix_opportunity_alerts_opportunity_id", "opportunity_alerts", ["opportunity_id"])
+
+    # 6b. raw_crawl_snapshots
+    op.create_table(
+        "raw_crawl_snapshots",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("source_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("opportunity_sources.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("url", sa.Text(), nullable=False),
+        sa.Column("content_hash", sa.String(64), nullable=False),
+        sa.Column("content_type", sa.String(100), nullable=False, server_default="text/html"),
+        sa.Column("size_bytes", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("raw_content", sa.Text(), nullable=False),
+        sa.Column("retrieved_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_raw_crawl_snapshots_source_id", "raw_crawl_snapshots", ["source_id"])
+    op.create_index("ix_raw_crawl_snapshots_content_hash", "raw_crawl_snapshots", ["content_hash"])
+
 
     # 7. opportunity_changes
     op.create_table(
@@ -320,8 +344,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_table("raw_crawl_snapshots")
     op.drop_table("link_verifications")
     op.drop_table("crawl_items")
+
     op.drop_table("crawl_runs")
     op.drop_table("opportunity_application_tracks")
     op.drop_table("opportunity_changes")

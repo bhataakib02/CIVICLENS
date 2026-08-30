@@ -905,9 +905,148 @@ paths:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PageSizeParam'
       responses:
-        "200": { description: Audit log page }
+  # ---------- Opportunities ----------
+  /opportunities:
+    get:
+      summary: List/discover unified public and private opportunities
+      parameters:
+        - in: query
+          name: query
+          schema: { type: string }
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: location
+          schema: { type: string }
+        - in: query
+          name: remote
+          schema: { type: boolean }
+        - in: query
+          name: closing_soon
+          schema: { type: boolean }
+        - in: query
+          name: is_government
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200":
+          description: Opportunities feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/OpportunityResponse' }
+                  total: { type: integer }
+
+  /opportunities/search:
+    get:
+      summary: Natural language opportunity search
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        "200": { description: Structured search results }
+
+  /opportunities/recommended:
+    get:
+      summary: Recommended personalized opportunities for current citizen
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+      responses:
+        "200": { description: Personalized recommendations }
+
+  /opportunities/categories:
+    get:
+      summary: Get opportunity categories and metadata
+      security: []
+      responses:
+        "200": { description: Opportunity categories }
+
+  /opportunities/sources:
+    get:
+      summary: List registered public opportunity sources
+      security: []
+      responses:
+        "200": { description: Sources list }
+
+  /opportunities/{opportunity_id}:
+    get:
+      summary: Get opportunity detail by ID
+      parameters:
+        - name: opportunity_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Opportunity detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OpportunityResponse' }
+
+  /admin/opportunity-sources:
+    get:
+      summary: Admin list opportunity sources
+      responses:
+        "200": { description: Sources registry }
+    post:
+      summary: Admin register new opportunity source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpportunitySourceResponse' }
+      responses:
+        "201": { description: Registered }
+
+  /admin/opportunity-sources/{source_id}/crawl:
+    post:
+      summary: Trigger manual crawl for a source
+      parameters:
+        - name: source_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Crawl triggered }
+
+  /admin/crawl-runs:
+    get:
+      summary: Admin get crawl run logs
+      responses:
+        "200": { description: Crawl runs }
+
+  /admin/opportunity-quality:
+    get:
+      summary: Admin review queue for quality scoring
+      responses:
+        "200": { description: Review queue }
+
+  /admin/broken-links:
+    get:
+      summary: Admin broken link monitor report
+      responses:
+        "200": { description: Broken links report }
+
+  /admin/metrics/crawl-runs:
+    get:
+      summary: Admin crawl runs observability metrics
+      responses:
+        "200": { description: Observability metrics }
 
 components:
+
   securitySchemes:
     bearerAuth:
       type: http

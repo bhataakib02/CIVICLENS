@@ -203,11 +203,20 @@ class OpportunityService:
         return [OpportunitySourceResponse.model_validate(s) for s in sources]
 
     def crawl_source(self, source_id: uuid.UUID) -> Dict[str, Any]:
+        import time
         from datetime import datetime, timezone
         from app.models.opportunity import CrawlRun
+        from app.core.metrics import metrics
+        from app.models.enums import DomainEventType
+        from app.modules.notifications.events import AggregateType
+        from app.modules.notifications.service import OutboxWriter
+
+        start_time = time.time()
+        metrics.incr("opportunity_crawl_runs_total")
 
         source = self.repo.get_source(source_id)
         if not source:
+            metrics.incr("opportunity_crawl_failures_total")
             return {"status": "FAILED", "error": "Source not found"}
 
         run = CrawlRun(
@@ -235,7 +244,23 @@ class OpportunityService:
                 extracted = extractor.extract(doc.content, doc.url, default_org=source.name)
                 content_hash = compute_content_hash(extracted.organization, extracted.title, extracted.application_deadline)
 
+                # Store raw content snapshot with retention policy (prompt amendment §2)
+                from datetime import timedelta
+                from app.models.opportunity import RawCrawlSnapshot
+                snapshot = RawCrawlSnapshot(
+                    source_id=source.id,
+                    url=doc.url,
+                    content_hash=content_hash,
+                    content_type=doc.content_type,
+                    size_bytes=len(doc.content.encode("utf-8")),
+                    raw_content=doc.content[:50000],  # snapshot limit
+                    retrieved_at=datetime.now(timezone.utc),
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),  # 30-day retention
+                )
+                self.session.add(snapshot)
+
                 existing = dedup_engine.find_duplicate(content_hash, source_identifier=doc.source_identifier)
+
                 if existing:
                     duplicates += 1
                     # Check if canonical upgrade needed
@@ -244,7 +269,9 @@ class OpportunityService:
                         self.session.commit()
                     continue
 
-                # Calculate quality score
+                opp_type = OpportunityType[extracted.type] if extracted.type in OpportunityType.__members__ else OpportunityType.JOB
+
+                # Calculate tiered quality score (0.85 for official government/scheme vs 0.75 for private)
                 score, decision = QualityScorer.calculate_quality_score(
                     authority_level=source.authority_level,
                     has_title=bool(extracted.title),
@@ -252,9 +279,9 @@ class OpportunityService:
                     has_deadline=bool(extracted.application_deadline),
                     has_eligibility=bool(extracted.eligibility),
                     has_application_url=bool(extracted.application_url),
+                    opp_type=opp_type,
                 )
 
-                opp_type = OpportunityType[extracted.type] if extracted.type in OpportunityType.__members__ else OpportunityType.JOB
                 opp_create = OpportunityCreate(
                     type=opp_type,
                     title=extracted.title,
@@ -276,12 +303,34 @@ class OpportunityService:
                 self.session.commit()
                 discovered += 1
 
+                # Enqueue Outbox domain event for realtime fanout if AUTO_PUBLISH
+                if decision == "AUTO_PUBLISH":
+                    OutboxWriter(self.session).enqueue_simple(
+                        event_type=DomainEventType.OPPORTUNITY_PUBLISHED,
+                        aggregate_type=AggregateType.OPPORTUNITY,
+                        aggregate_id=opp.id,
+                        payload={
+                            "opportunity_id": str(opp.id),
+                            "title": opp.title,
+                            "organization": opp.organization,
+                            "type": opp.type.value,
+                            "source_domain": opp.source_domain,
+                            "quality_score": opp.quality_score,
+                        },
+                    )
+                    self.session.commit()
+
+            duration_sec = time.time() - start_time
             run.status = "COMPLETED"
             run.pages_changed = discovered
             run.opportunities_found = discovered
             run.duplicates_detected = duplicates
+            run.duration_ms = duration_sec * 1000.0
             run.completed_at = datetime.now(timezone.utc)
             self.session.commit()
+
+            metrics.incr("opportunity_discovered_total", discovered)
+            metrics.observe("opportunity_crawl_duration_seconds", duration_sec)
 
             return {
                 "status": "COMPLETED",
@@ -291,9 +340,15 @@ class OpportunityService:
             }
 
         except Exception as exc:
+            duration_sec = time.time() - start_time
             run.status = "FAILED"
             run.error_summary = str(exc)[:500]
+            run.duration_ms = duration_sec * 1000.0
             run.completed_at = datetime.now(timezone.utc)
             self.session.commit()
+
+            metrics.incr("opportunity_crawl_failures_total")
+            metrics.observe("opportunity_crawl_duration_seconds", duration_sec)
             return {"status": "FAILED", "error": str(exc), "source": source.name}
+
 

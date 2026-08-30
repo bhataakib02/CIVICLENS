@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -60,8 +61,14 @@ class OpportunitySource(Base):
     crawl_frequency = Column(String(50), nullable=False, default="daily")  # hourly, 6h, daily
     enabled = Column(Boolean, nullable=False, default=True)
 
+    # Source Health Metrics (Prompt Amendment §8)
+    health_status = Column(String(50), nullable=False, default="HEALTHY")  # HEALTHY, STALE, DEGRADED, BLOCKED, DISABLED
+    consecutive_failures = Column(Integer, nullable=False, default=0)
+    last_crawl_started_at = Column(DateTime(timezone=True), nullable=True)
+    last_crawl_completed_at = Column(DateTime(timezone=True), nullable=True)
     last_crawled_at = Column(DateTime(timezone=True), nullable=True)
     last_successful_crawl_at = Column(DateTime(timezone=True), nullable=True)
+    last_failed_at = Column(DateTime(timezone=True), nullable=True)
     last_error_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
 
@@ -70,6 +77,8 @@ class OpportunitySource(Base):
 
     opportunities = relationship("Opportunity", back_populates="source", cascade="all, delete-orphan")
     crawl_runs = relationship("CrawlRun", back_populates="source", cascade="all, delete-orphan")
+    raw_snapshots = relationship("RawCrawlSnapshot", back_populates="source", cascade="all, delete-orphan")
+
 
 
 class Opportunity(Base):
@@ -214,7 +223,7 @@ class OpportunitySubscription(Base):
 
 
 class OpportunityAlert(Base):
-    """Sent deadline reminder or opportunity alert log."""
+    """Sent deadline reminder or opportunity alert log (deduplicated per user + opp + alert_type + version)."""
 
     __tablename__ = "opportunity_alerts"
 
@@ -222,8 +231,32 @@ class OpportunityAlert(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     opportunity_id = Column(UUID(as_uuid=True), ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False, index=True)
     alert_type = Column(String(50), nullable=False)  # NEW_MATCH, DEADLINE_REMINDER, CHANGE_ALERT
+    opportunity_version = Column(Integer, nullable=False, default=1)
     message = Column(Text, nullable=False)
     sent_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("opportunity_id", "user_id", "alert_type", "opportunity_version", name="uq_opportunity_alert_dedup"),
+    )
+
+
+class RawCrawlSnapshot(Base):
+    """Raw crawled document snapshot with retention rules (prompt §2)."""
+
+    __tablename__ = "raw_crawl_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_id = Column(UUID(as_uuid=True), ForeignKey("opportunity_sources.id", ondelete="CASCADE"), nullable=False, index=True)
+    url = Column(Text, nullable=False)
+    content_hash = Column(String(64), nullable=False, index=True)
+    content_type = Column(String(100), nullable=False, default="text/html")
+    size_bytes = Column(Integer, nullable=False, default=0)
+    raw_content = Column(Text, nullable=False)
+    retrieved_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # retention policy cutoff
+
+    source = relationship("OpportunitySource", back_populates="raw_snapshots")
+
 
 
 class OpportunityChange(Base):

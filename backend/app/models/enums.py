@@ -351,6 +351,9 @@ class DomainEventType(str, enum.Enum):
 
     SCHEME_VERSION_ACTIVATED = "SCHEME_VERSION_ACTIVATED"
 
+    OPPORTUNITY_PUBLISHED = "OPPORTUNITY_PUBLISHED"
+    OPPORTUNITY_UPDATED = "OPPORTUNITY_UPDATED"
+
 
 class DeliveryErrorCode(str, enum.Enum):
     """Structured provider delivery error codes (prompt §12, §31).
