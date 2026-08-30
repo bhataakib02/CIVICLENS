@@ -77,9 +77,9 @@ export const ROLE_CAPABILITIES: Record<UserRole, RoleCapability> = {
     canPublishSchemes: true,
     canSimulateRules: true,
     canManageKnowledge: true,
-    canViewAuditLogs: true,
+    canViewAuditLogs: false,
     canViewNotificationOps: true,
-    canManageUsers: true,
+    canManageUsers: false,
     canViewSystemHealth: true,
   },
   admin: {

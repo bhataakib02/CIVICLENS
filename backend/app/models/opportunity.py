@@ -26,6 +26,7 @@ from app.models.enums import (
     OpportunityAuthorityLevel,
     OpportunityDeadlineStatus,
     OpportunityLinkType,
+    OpportunitySourceLifecycleState,
     OpportunitySourceType,
     OpportunityType,
 )
@@ -61,10 +62,32 @@ class OpportunitySource(Base):
     crawl_frequency = Column(String(50), nullable=False, default="daily")  # hourly, 6h, daily
     enabled = Column(Boolean, nullable=False, default=True)
 
+    lifecycle_state = Column(
+        Enum(OpportunitySourceLifecycleState),
+        nullable=False,
+        default=OpportunitySourceLifecycleState.ACTIVE,
+        index=True,
+    )
+
     priority = Column(String(10), nullable=False, default="P1", index=True)  # P0, P1, P2, P3
     district = Column(String(100), nullable=True)
     geographic_scope = Column(String(50), nullable=False, default="NATIONAL")  # NATIONAL, STATE, DISTRICT, CITY, REMOTE
-    last_failure_stage = Column(String(50), nullable=True)  # DNS_FAILED, HTTP_ERROR, ROBOTS_BLOCKED, TIMEOUT, PARSER_FAILED, EXTRACTION_FAILED, VALIDATION_FAILED, CRAWL_SUCCESS_ZERO_OPPORTUNITIES, NONE
+    last_failure_stage = Column(String(50), nullable=True)  # DNS_FAILED, HTTP_ERROR, ROBOTS_BLOCKED, TIMEOUT, PARSER_FAILED, EXTRACTION_FAILED, VALIDATION_FAILED, QUALITY_REJECTED, CRAWL_SUCCESS_ZERO_OPPORTUNITIES, NONE
+
+    # Phase 4 Configuration & Quality Metrics
+    source_category = Column(String(100), nullable=True)
+    connector_type = Column(String(50), nullable=False, default="HTML")
+    seed_urls = Column(JSONB, nullable=False, default=list)
+    allowed_paths = Column(JSONB, nullable=False, default=list)
+    excluded_paths = Column(JSONB, nullable=False, default=list)
+    rate_limit = Column(Float, nullable=False, default=1.0)
+    opportunity_types = Column(JSONB, nullable=False, default=list)
+
+    overall_quality_score = Column(Float, nullable=False, default=1.0)
+    reliability_score = Column(Float, nullable=False, default=1.0)
+    crawl_success_rate = Column(Float, nullable=False, default=1.0)
+    extraction_success_rate = Column(Float, nullable=False, default=1.0)
+    link_success_rate = Column(Float, nullable=False, default=1.0)
 
     # Source Health Metrics (Prompt Amendment §8)
     health_status = Column(String(50), nullable=False, default="HEALTHY")  # HEALTHY, STALE, DEGRADED, BLOCKED, DISABLED
@@ -83,7 +106,29 @@ class OpportunitySource(Base):
     opportunities = relationship("Opportunity", back_populates="source", cascade="all, delete-orphan")
     crawl_runs = relationship("CrawlRun", back_populates="source", cascade="all, delete-orphan")
     raw_snapshots = relationship("RawCrawlSnapshot", back_populates="source", cascade="all, delete-orphan")
+    endpoints = relationship("SourceEndpoint", back_populates="source", cascade="all, delete-orphan")
 
+
+
+class SourceEndpoint(Base):
+    """Multi-target crawl endpoint for a source (Phase 2 requirement)."""
+
+    __tablename__ = "source_endpoints"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_id = Column(UUID(as_uuid=True), ForeignKey("opportunity_sources.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    url = Column(Text, nullable=False)
+    connector_type = Column(String(50), nullable=False, default="HTML")
+    crawl_frequency = Column(String(50), nullable=False, default="30_minutes")
+    priority = Column(String(10), nullable=False, default="P1")
+    enabled = Column(Boolean, nullable=False, default=True)
+    last_crawled_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now, onupdate=_utc_now)
+
+    source = relationship("OpportunitySource", back_populates="endpoints")
 
 
 class Opportunity(Base):

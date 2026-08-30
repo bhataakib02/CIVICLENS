@@ -22,6 +22,7 @@ WORKDIR /app
 
 COPY --from=builder /install /install
 COPY backend/app ./app
+COPY workers ./workers
 
 RUN useradd --create-home --uid 10001 workeruser \
     && chown -R workeruser:workeruser /app
@@ -30,4 +31,4 @@ USER workeruser
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import sys; sys.exit(0)" || exit 1
 
-CMD ["python", "-m", "app.modules.notifications.worker"]
+CMD ["python", "-m", "workers.supervisor"]

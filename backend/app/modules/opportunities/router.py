@@ -95,6 +95,13 @@ def list_categories() -> dict:
     }
 
 
+@opportunities_router.get("/coverage")
+def get_citizen_coverage_summary(db: Session = Depends(db_session)):
+    """Get truthful citizen coverage summary (monitored sources, covered states, last updated)."""
+    service = OpportunityService(db)
+    return service.get_citizen_coverage()
+
+
 @opportunities_router.get("/sources", response_model=List[OpportunitySourceResponse])
 def list_public_sources(db: Session = Depends(db_session)) -> List[OpportunitySourceResponse]:
     """List registered authoritative opportunity sources."""

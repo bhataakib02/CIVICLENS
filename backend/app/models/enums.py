@@ -472,3 +472,19 @@ class OpportunityApplicationStatus(str, enum.Enum):
     REJECTED = "REJECTED"
     WITHDRAWN = "WITHDRAWN"
 
+
+class OpportunitySourceLifecycleState(str, enum.Enum):
+    """Explicit lifecycle states for opportunity sources (Phase 2 requirement)."""
+
+    DISCOVERED = "DISCOVERED"
+    VALIDATING = "VALIDATING"
+    PENDING_REVIEW = "PENDING_REVIEW"
+    APPROVED = "APPROVED"
+    ACTIVE = "ACTIVE"
+    DEGRADED = "DEGRADED"
+    STALE = "STALE"
+    FAILED = "FAILED"
+    BLOCKED = "BLOCKED"
+    RETIRED = "RETIRED"
+
+

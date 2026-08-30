@@ -6,7 +6,7 @@ Supports distributed locking, per-source schedules, failure backoffs, and health
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List
 from sqlalchemy.orm import Session
 
@@ -31,8 +31,48 @@ class OpportunityScheduler:
         self.service = OpportunityService(session)
         self.lock_mgr = DistributedCrawlLock(session)
 
+    def reap_stale_runs(self, timeout_seconds: int = 600) -> int:
+        """Find and terminate any orphaned CrawlRun stuck in RUNNING beyond worker lock lease TTL (600s)."""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=timeout_seconds)
+
+        stale_runs = (
+            self.session.query(CrawlRun)
+            .filter(CrawlRun.status == "RUNNING", CrawlRun.started_at <= cutoff)
+            .all()
+        )
+
+        reaped_count = 0
+        for run in stale_runs:
+            run.status = "FAILED"
+            run.completed_at = now
+            run.failure_stage = "TIMEOUT"
+            run.error_summary = f"Stale crawl run timed out after {timeout_seconds}s lease expiration"
+
+            if run.source_id:
+                source = self.session.query(OpportunitySource).filter(OpportunitySource.id == run.source_id).first()
+                if source:
+                    source.health_status = "DEGRADED"
+                    source.last_error_at = now
+                    source.last_error = run.error_summary
+                    if source.crawl_policy and "lease" in source.crawl_policy:
+                        new_policy = dict(source.crawl_policy)
+                        new_policy.pop("lease", None)
+                        source.crawl_policy = new_policy
+
+            reaped_count += 1
+
+        if reaped_count > 0:
+            self.session.commit()
+            logger.warning("reaped_stale_crawl_runs", extra={"reaped_count": reaped_count})
+
+        return reaped_count
+
     def run_discovery_cycle(self) -> Dict[str, Any]:
         """Execute a discovery cycle for all due sources."""
+        # Clean up any orphaned/stale runs before scheduling
+        self.reap_stale_runs(timeout_seconds=600)
+
         now = datetime.now(timezone.utc)
         enabled_sources = self.repo.list_sources(enabled_only=True)
         processed = 0

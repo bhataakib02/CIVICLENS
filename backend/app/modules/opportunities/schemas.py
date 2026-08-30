@@ -25,9 +25,20 @@ class OpportunitySourceCreate(BaseModel):
     source_type: OpportunitySourceType = OpportunitySourceType.OTHER
     country: str = "IN"
     state: Optional[str] = None
+    district: Optional[str] = None
+    geographic_scope: str = "NATIONAL"
+    priority: str = "P1"
     authority_level: OpportunityAuthorityLevel = OpportunityAuthorityLevel.UNVERIFIED
     crawl_frequency: str = "daily"
     enabled: bool = True
+
+    source_category: Optional[str] = None
+    connector_type: str = "HTML"
+    seed_urls: List[str] = Field(default_factory=list)
+    allowed_paths: List[str] = Field(default_factory=list)
+    excluded_paths: List[str] = Field(default_factory=list)
+    rate_limit: float = 1.0
+    opportunity_types: List[str] = Field(default_factory=list)
 
 
 class OpportunitySourceUpdate(BaseModel):
@@ -35,9 +46,21 @@ class OpportunitySourceUpdate(BaseModel):
     domain: Optional[str] = None
     base_url: Optional[str] = None
     source_type: Optional[OpportunitySourceType] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    geographic_scope: Optional[str] = None
+    priority: Optional[str] = None
     authority_level: Optional[OpportunityAuthorityLevel] = None
     crawl_frequency: Optional[str] = None
     enabled: Optional[bool] = None
+
+    source_category: Optional[str] = None
+    connector_type: Optional[str] = None
+    seed_urls: Optional[List[str]] = None
+    allowed_paths: Optional[List[str]] = None
+    excluded_paths: Optional[List[str]] = None
+    rate_limit: Optional[float] = None
+    opportunity_types: Optional[List[str]] = None
 
 
 class OpportunitySourceResponse(BaseModel):
@@ -48,9 +71,30 @@ class OpportunitySourceResponse(BaseModel):
     source_type: OpportunitySourceType
     country: str
     state: Optional[str] = None
+    district: Optional[str] = None
+    geographic_scope: str = "NATIONAL"
+    priority: str = "P1"
     authority_level: OpportunityAuthorityLevel
     crawl_frequency: str
     enabled: bool
+    health_status: str = "HEALTHY"
+    last_failure_stage: Optional[str] = None
+    consecutive_failures: int = 0
+
+    source_category: Optional[str] = None
+    connector_type: str = "HTML"
+    seed_urls: List[str] = Field(default_factory=list)
+    allowed_paths: List[str] = Field(default_factory=list)
+    excluded_paths: List[str] = Field(default_factory=list)
+    rate_limit: float = 1.0
+    opportunity_types: List[str] = Field(default_factory=list)
+
+    overall_quality_score: float = 1.0
+    reliability_score: float = 1.0
+    crawl_success_rate: float = 1.0
+    extraction_success_rate: float = 1.0
+    link_success_rate: float = 1.0
+
     last_crawled_at: Optional[datetime] = None
     last_successful_crawl_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
@@ -60,6 +104,64 @@ class OpportunitySourceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Phase 4 Source Discovery & Coverage Schemas ---
+
+class SourceDiscoveryRequest(BaseModel):
+    organization: str
+    domain: str
+
+
+class SourceDiscoveryReport(BaseModel):
+    organization: str
+    domain: str
+    base_url: str
+    dns_status: str
+    https_status: str
+    robots_allowed: bool
+    candidate_connector: str
+    candidate_opportunity_types: List[str]
+    suggested_authority_level: str
+    suggested_geographic_scope: str
+    suggested_state: Optional[str] = None
+    sample_opportunity: Optional[Dict[str, Any]] = None
+    is_approved_for_onboarding: bool = False
+
+
+class StateCategoryCoverage(BaseModel):
+    state: str
+    sources: Dict[str, List[Dict[str, Any]]]
+
+
+class SourceCoverageMatrixResponse(BaseModel):
+    matrix: List[StateCategoryCoverage]
+    total_states_covered: int
+    total_sources_mapped: int
+
+
+class NationalCoverageDashboardResponse(BaseModel):
+    total_sources: int
+    healthy_sources: int
+    degraded_sources: int
+    blocked_sources: int
+    failed_sources: int
+    stale_sources: int
+    states_covered_count: int
+    states_covered: List[str]
+    opportunity_types_count: int
+    opportunity_types: List[str]
+    opportunities_by_type: Dict[str, int]
+    opportunities_by_state: Dict[str, int]
+    sources_by_state: Dict[str, int]
+    sources_by_opportunity_type: Dict[str, int]
+
+
+class CitizenCoverageSummaryResponse(BaseModel):
+    sources_monitored: int
+    states_covered: int
+    last_updated_at: Optional[datetime] = None
+    disclaimer: str = "CivicLens monitors authoritative government and verified organization portals."
 
 
 # --- Opportunity Link & Version Schemas ---

@@ -15,6 +15,7 @@ from app.modules.opportunities.schemas import (
     OpportunitySourceCreate,
     OpportunitySourceResponse,
     OpportunitySourceUpdate,
+    SourceDiscoveryRequest,
 )
 
 admin_opportunities_router = APIRouter(prefix="/admin", tags=["admin-opportunities"])
@@ -41,6 +42,37 @@ def validate_admin_source(
     validator = SourceValidator()
     res = validator.validate_source(url, domain=domain)
     return res.__dict__
+
+
+@admin_opportunities_router.post("/opportunity-sources/discover")
+def discover_admin_source(
+    req: SourceDiscoveryRequest,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(db_session),
+):
+    """Admin: Run Source Discovery Assistant workflow for candidate organization/domain."""
+    service = OpportunityService(db)
+    return service.discover_source(req.organization, req.domain)
+
+
+@admin_opportunities_router.get("/opportunity-sources/coverage-matrix")
+def get_admin_coverage_matrix(
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(db_session),
+):
+    """Admin: Get dynamic machine-readable source coverage matrix."""
+    service = OpportunityService(db)
+    return service.get_coverage_matrix()
+
+
+@admin_opportunities_router.get("/dashboard")
+def get_admin_national_dashboard(
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(db_session),
+):
+    """Admin: Get National Coverage Dashboard metrics."""
+    service = OpportunityService(db)
+    return service.get_national_dashboard()
 
 
 @admin_opportunities_router.post("/opportunity-sources", response_model=OpportunitySourceResponse, status_code=status.HTTP_201_CREATED)
