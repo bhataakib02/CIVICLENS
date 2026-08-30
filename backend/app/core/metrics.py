@@ -1,17 +1,21 @@
-"""Lightweight in-process metrics (prompt §51).
+"""Lightweight in-process metrics (prompt §51, Part XII).
 
 No external metrics backend is configured, so this is a thread-safe in-memory
 counter/gauge registry that structured logs and a debug endpoint can read. In
 production these would be exported to Prometheus/CloudWatch; the interface here
 (incr/observe/gauge) is what a real exporter would wrap.
 
-Metric names (prompt §51):
+Metric names:
   outbox_events_created / _processed / _failed / _dead_lettered
   notifications_created / _sent / _failed
   notification_delivery_latency_ms (observation)
   outbox_queue_depth (gauge)
   websocket_connections (gauge) / websocket_delivery_failures (counter)
   notification_retry_count (counter)
+  opportunity_crawl_runs_total / _failures_total
+  opportunity_discovered_total / _updated_total / _closed_total
+  opportunity_link_failures_total / _extraction_failures_total
+  opportunity_crawl_duration_seconds / _publication_delay_seconds (observations)
 """
 from __future__ import annotations
 

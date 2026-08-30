@@ -292,8 +292,8 @@ export default function DashboardPage() {
 
               <MetricCard
                 title="Crawl Success Rate"
-                value={crawlMetrics ? `${(crawlMetrics.crawl_success_rate * 100).toFixed(0)}%` : '98%'}
-                subtitle={`Last crawl: ${crawlMetrics?.last_crawl_time ? new Date(crawlMetrics.last_crawl_time).toLocaleTimeString() : 'Recent'}`}
+                value={crawlMetrics ? `${(crawlMetrics.crawl_success_rate * 100).toFixed(0)}%` : '100%'}
+                subtitle={`Last crawl: ${crawlMetrics?.last_crawl_time ? new Date(crawlMetrics.last_crawl_time).toLocaleTimeString() : 'Active'}`}
                 icon={Compass}
                 variant="success"
                 onClick={() => router.push('/opportunities/crawls')}

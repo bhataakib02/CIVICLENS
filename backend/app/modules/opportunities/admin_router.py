@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import db_session
 from app.models.user import User
-from app.models.opportunity import Opportunity, OpportunityLink
+from app.models.opportunity import Opportunity, OpportunityLink, CrawlRun
 from app.modules.auth.dependencies import require_admin
 from app.modules.opportunities.service import OpportunityService
 from app.modules.opportunities.schemas import (
@@ -84,7 +84,16 @@ def get_opportunity_quality_review_queue(
     db: Session = Depends(db_session),
 ) -> List[Dict[str, Any]]:
     """Admin: Review queue for medium and low confidence extracted opportunities."""
-    opps = db.query(Opportunity).filter(Opportunity.quality_score < 0.75).all()
+    from sqlalchemy import or_, and_
+    high_impact = or_(
+        Opportunity.source_type == "OFFICIAL",
+        Opportunity.type == OpportunityType.GOVERNMENT_SCHEME,
+    )
+    review_filter = or_(
+        and_(high_impact, Opportunity.quality_score < 0.85),
+        and_(~high_impact, Opportunity.quality_score < 0.75),
+    )
+    opps = db.query(Opportunity).filter(review_filter).all()
     return [
         {
             "id": str(o.id),
@@ -121,6 +130,7 @@ def get_broken_links_report(
 
 
 @admin_opportunities_router.get("/metrics/crawl-runs")
+@admin_opportunities_router.get("/opportunity-sources/metrics/crawl-runs")
 def get_crawl_metrics(
     current_admin: User = Depends(require_admin),
     db: Session = Depends(db_session),
@@ -129,14 +139,27 @@ def get_crawl_metrics(
     service = OpportunityService(db)
     total_sources, verified_sources, last_crawl, last_verify = service.repo.get_source_counts()
     broken_links = db.query(OpportunityLink).filter(OpportunityLink.is_valid == False).count()
-    review_queue = db.query(Opportunity).filter(Opportunity.quality_score < 0.75).count()
+    from sqlalchemy import or_, and_
+    high_impact = or_(
+        Opportunity.source_type == "OFFICIAL",
+        Opportunity.type == OpportunityType.GOVERNMENT_SCHEME,
+    )
+    review_filter = or_(
+        and_(high_impact, Opportunity.quality_score < 0.85),
+        and_(~high_impact, Opportunity.quality_score < 0.75),
+    )
+    review_queue = db.query(Opportunity).filter(review_filter).count()
+
+    total_runs = db.query(CrawlRun).count()
+    completed_runs = db.query(CrawlRun).filter(CrawlRun.status == "COMPLETED").count()
+    success_rate = (completed_runs / total_runs) if total_runs > 0 else 1.0
 
     return {
         "active_sources": total_sources,
         "verified_sources": verified_sources,
         "last_crawl_time": last_crawl,
         "last_verification_time": last_verify,
-        "crawl_success_rate": 0.98,
+        "crawl_success_rate": round(success_rate, 2),
         "broken_links_count": broken_links,
         "review_queue_count": review_queue,
     }

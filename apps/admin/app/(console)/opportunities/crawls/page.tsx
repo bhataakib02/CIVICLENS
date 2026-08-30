@@ -1,73 +1,120 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getCrawlRuns, getCrawlMetrics, CrawlRun, CrawlMetrics } from '@/lib/api/opportunities';
+import { getCrawlRuns, getCrawlMetrics, triggerManualCrawl, getAdminOpportunitySources, CrawlRun, CrawlMetrics, OpportunitySource } from '@/lib/api/opportunities';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
-import { Compass, Sparkles, Globe, Activity } from 'lucide-react';
+import { Compass, Sparkles, Globe, Activity, Play, Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function CrawlObservabilityPage() {
   const [runs, setRuns] = useState<CrawlRun[]>([]);
   const [metrics, setMetrics] = useState<CrawlMetrics | null>(null);
+  const [sources, setSources] = useState<OpportunitySource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTriggering, setIsTriggering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const loadObservability = async () => {
+    setIsLoading(true);
+    try {
+      const [runsData, metricsData, sourcesData] = await Promise.all([
+        getCrawlRuns(),
+        getCrawlMetrics(),
+        getAdminOpportunitySources().catch(() => []),
+      ]);
+      setRuns(runsData);
+      setMetrics(metricsData);
+      setSources(sourcesData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load observability metrics.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadObservability() {
-      setIsLoading(true);
-      try {
-        const [runsData, metricsData] = await Promise.all([getCrawlRuns(), getCrawlMetrics()]);
-        setRuns(runsData);
-        setMetrics(metricsData);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load observability metrics.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
     loadObservability();
   }, []);
 
+  const handleTriggerCrawl = async () => {
+    setIsTriggering(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      if (sources.length === 0) {
+        setError('No registered opportunity sources available. Please register a source in the Source Registry before triggering a manual crawl.');
+        return;
+      }
+      const targetSourceId = sources[0].id;
+      await triggerManualCrawl(targetSourceId);
+      setSuccess('Manual discovery crawl triggered successfully! Fetching latest web portal data...');
+      await loadObservability();
+    } catch (err: any) {
+      setError(err.message || 'Failed to trigger manual crawl job.');
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-900/90 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-1">
-        <div className="flex items-center gap-2">
-          <Compass className="w-5 h-5 text-cyan-500" />
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Crawl Observability &amp; Metrics</h1>
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      <div className="bg-white dark:bg-slate-900/90 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Compass className="w-5 h-5 text-cyan-500" />
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Crawl Observability &amp; Metrics</h1>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Monitor 30-minute discovery scheduler execution logs, success rates, and items discovered.
+          </p>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Monitor 30-minute discovery scheduler execution logs, success rates, and items discovered.
-        </p>
+
+        <button
+          onClick={handleTriggerCrawl}
+          disabled={isTriggering}
+          className="px-5 py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all"
+        >
+          {isTriggering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
+          <span>Run Discovery Crawl Now</span>
+        </button>
       </div>
+
+      {success && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      {error && <Alert type="error">{error}</Alert>}
 
       {metrics && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Active Sources</span>
             <span className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1 block font-mono">{metrics.active_sources}</span>
           </div>
-          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Verified Portals</span>
             <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block font-mono">{metrics.verified_sources}</span>
           </div>
-          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Crawl Success Rate</span>
-            <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mt-1 block font-mono">{(metrics.crawl_success_rate * 100).toFixed(0)}%</span>
+            <span className="text-2xl font-extrabold text-cyan-600 dark:text-cyan-400 mt-1 block font-mono">{(metrics.crawl_success_rate * 100).toFixed(0)}%</span>
           </div>
-          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Review Queue</span>
             <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 block font-mono">{metrics.review_queue_count}</span>
           </div>
         </div>
       )}
 
-      {error && <Alert type="error">{error}</Alert>}
-
       {isLoading ? (
         <Skeleton className="h-64 rounded-3xl" />
       ) : (
         <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/90 font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/90 font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2 select-none">
             <Activity className="w-4 h-4 text-cyan-500" />
             <span>Recent Discovery Runs</span>
           </div>
@@ -85,7 +132,7 @@ export default function CrawlObservabilityPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80 text-slate-800 dark:text-slate-200 font-medium">
               {runs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">
+                  <td colSpan={6} className="p-8 text-center text-slate-400 dark:text-slate-500 italic font-mono">
                     No crawl runs recorded yet. Discovery scheduler active.
                   </td>
                 </tr>

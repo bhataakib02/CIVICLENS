@@ -115,6 +115,26 @@ _TEMPLATES: dict[str, _TemplateDef] = {
                    "An eligibility check has completed: {decision}."),
         },
     ),
+    DomainEventType.OPPORTUNITY_PUBLISHED.value: _TemplateDef(
+        version=1,
+        by_language={
+            "en": ("New Opportunity Published",
+                   "A new opportunity '{title}' from {organization} has been published."),
+            "bn": ("নতুন সুযোগ প্রকাশিত হয়েছে",
+                   "{organization} থেকে নতুন সুযোগ '{title}' প্রকাশিত হয়েছে।"),
+            "hi": ("नया अवसर प्रकाशित हुआ",
+                   "{organization} से नया अवसर '{title}' प्रकाशित किया गया है।"),
+        },
+    ),
+    DomainEventType.OPPORTUNITY_UPDATED.value: _TemplateDef(
+        version=1,
+        by_language={
+            "en": ("Opportunity Details Updated",
+                   "Details for opportunity '{title}' from {organization} have been updated."),
+            "hi": ("अवसर विवरण अपडेट हुआ",
+                   "{organization} से अवसर '{title}' के विवरण अपडेट किए गए हैं।"),
+        },
+    ),
 }
 
 

@@ -58,8 +58,10 @@ _POLICIES: dict[DomainEventType, NotificationPolicy] = {
         (Ch.IN_APP,), Cat.DOC_REVERIFICATION, Pri.LOW),
     DomainEventType.ELIGIBILITY_CHECK_COMPLETED: NotificationPolicy(
         (Ch.IN_APP,), Cat.SCHEME_MATCH, Pri.LOW),
-    # DOCUMENT_UPLOADED / DOCUMENT_PROCESSING_FAILED / SCHEME_VERSION_ACTIVATED:
-    # intentionally not citizen-notified here (avoid spam / internal-only).
+    DomainEventType.OPPORTUNITY_PUBLISHED: NotificationPolicy(
+        (Ch.IN_APP,), Cat.SCHEME_MATCH, Pri.NORMAL),
+    DomainEventType.OPPORTUNITY_UPDATED: NotificationPolicy(
+        (Ch.IN_APP,), Cat.SCHEME_MATCH, Pri.LOW),
 }
 
 # Which preference category flag governs each notification category.
