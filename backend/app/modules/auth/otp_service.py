@@ -83,8 +83,10 @@ class OTPMaxAttemptsError(AppError):
 
 
 def _normalize_phone(phone: str) -> str:
-    """Normalize a phone number: strip whitespace and non-digit chars except leading +."""
+    """Normalize a phone number or email address target."""
     phone = phone.strip()
+    if "@" in phone:
+        return phone.lower()
     if phone.startswith("+"):
         return "+" + "".join(c for c in phone[1:] if c.isdigit())
     return "".join(c for c in phone if c.isdigit())
@@ -127,14 +129,20 @@ class OTPService:
     # Request OTP
     # ------------------------------------------------------------------ #
     def request_otp(self, phone_number: str, *, ip: str | None = None) -> None:
-        """Generate and deliver an OTP for the given phone number.
+        """Generate and deliver an OTP for the given phone number or email.
 
-        Rate-limited per phone number. Does not reveal whether the number is
-        registered (consistent behavior for new and existing numbers).
+        Rate-limited per target. Does not reveal whether the target is
+        registered (consistent behavior).
         Returns None — the response is always 202 Accepted.
         """
         normalized = _normalize_phone(phone_number)
-        if not normalized or len(normalized) < 7 or len(normalized) > 20:
+        if "@" in normalized:
+            if len(normalized) < 5 or "." not in normalized:
+                raise ValidationError(
+                    "Invalid email address format.",
+                    field_errors=[{"field": "phone_number", "message": "Must be a valid email address."}],
+                )
+        elif not normalized or len(normalized) < 7 or len(normalized) > 20:
             raise ValidationError(
                 "Invalid phone number format.",
                 field_errors=[{"field": "phone_number", "message": "Must be 7–20 digits."}],
@@ -289,17 +297,24 @@ class OTPService:
     ) -> User:
         """Return existing citizen user or auto-create a new one."""
         user = self._repo.get_user_by_phone(phone)
+        if user is None and "@" in phone:
+            user = self._repo.get_user_by_email(phone)
         if user is not None:
             if user.status is UserStatus.SUSPENDED:
                 raise AuthenticationError("Account is suspended.")
             return user
 
-        # Auto-registration: new citizen account with phone number.
-        user = User(
-            phone_number=phone,
-            role=UserRole.CITIZEN,
-            status=UserStatus.ACTIVE,
-        )
+        # Auto-registration: new citizen account with phone number or email.
+        user_kwargs: dict = {
+            "role": UserRole.CITIZEN,
+            "status": UserStatus.ACTIVE,
+        }
+        if "@" in phone:
+            user_kwargs["email"] = phone
+        else:
+            user_kwargs["phone_number"] = phone
+
+        user = User(**user_kwargs)
         user.profile = CitizenProfile(current_version_no=0)
         try:
             self._session.add(user)
@@ -307,7 +322,7 @@ class OTPService:
         except IntegrityError:
             # Race: another concurrent OTP verify created the account.
             self._session.rollback()
-            user = self._repo.get_user_by_phone(phone)
+            user = self._repo.get_user_by_phone(phone) or self._repo.get_user_by_email(phone)
             if user is None:
                 raise
         self._audit.record(

@@ -18,3 +18,19 @@ export async function logoutAccount(all = false): Promise<void> {
 export async function getAccount(): Promise<AccountInfo> {
   return apiClient<AccountInfo>('/me/account');
 }
+
+export async function requestOtp(target: string): Promise<void> {
+  return apiClient<void>('/auth/otp/request', {
+    method: 'POST',
+    body: { phone_number: target },
+    skipAuth: true,
+  });
+}
+
+export async function verifyOtp(target: string, code: string): Promise<TokenPair> {
+  return apiClient<TokenPair>('/auth/otp/verify', {
+    method: 'POST',
+    body: { phone_number: target, code },
+    skipAuth: true,
+  });
+}

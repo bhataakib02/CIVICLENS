@@ -52,6 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tokens = await verifyOtp(phoneNumber, code);
       tokenStore.setTokens(tokens.access_token, tokens.refresh_token);
       const profile = await getProfile();
+      if (profile && (!profile.phone_number || profile.phone_number === '9876543210')) {
+        profile.phone_number = phoneNumber;
+      }
       setUser(profile);
     } catch (err) {
       tokenStore.clearTokens();

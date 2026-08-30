@@ -24,7 +24,7 @@ class User(Base):
     # phone_number: data-dictionary has it unique + PII. Nullable here because
     # this slice supports email+password accounts (FR-AUTH-1: "or email+password").
     phone_number: Mapped[str | None] = mapped_column(
-        String(20), unique=True, nullable=True, index=True
+        String(320), unique=True, nullable=True, index=True
     )
     email: Mapped[str | None] = mapped_column(String(320), unique=True, nullable=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)

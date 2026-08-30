@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/auth-context';
+import { requestOtp, verifyOtp } from '@/lib/api/auth';
 import { Layers, ShieldCheck, Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -13,27 +14,57 @@ export default function LoginPage() {
   const [mfaCode, setMfaCode] = useState('');
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [error, setError] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInfoMsg('');
     setLoading(true);
 
     try {
       if (!requiresMfa) {
-        // Staff authentication requires email + password. For admin/scheme_admin accounts,
-        // prompt requires MFA verification. We enforce the MFA step in UI.
-        await login(email, password);
-        // Prompt §4 & §26 require MFA for staff accounts. If staff login succeeds, check if role needs MFA confirmation
-        setRequiresMfa(true);
-      } else {
-        // Confirm MFA code (simulated verification for staff session activation)
-        if (mfaCode.trim().length !== 6) {
-          setError('Please enter a valid 6-digit MFA verification code.');
+        // Step 1: Validate email + password and dispatch real 6-digit Email OTP
+        const cleanEmail = email.trim();
+        if (!cleanEmail || !password) {
+          setError('Please enter staff email and password.');
           setLoading(false);
           return;
         }
+
+        // Verify password first
+        await login(cleanEmail, password);
+
+        // Dispatch real 6-digit Email OTP
+        try {
+          await requestOtp(cleanEmail);
+        } catch (otpErr) {
+          // Continue if rate limited or already requested
+        }
+
+        setRequiresMfa(true);
+        setInfoMsg(`A 6-digit OTP verification code has been dispatched to ${cleanEmail}. Enter the code below to access the Admin Console.`);
+      } else {
+        // Step 2: Verify 6-digit Email OTP code
+        const cleanCode = mfaCode.trim();
+        if (!/^\d{6}$/.test(cleanCode)) {
+          setError('Please enter a valid 6-digit Email OTP verification code.');
+          setLoading(false);
+          return;
+        }
+
+        // Verify 6-digit OTP with backend
+        try {
+          await verifyOtp(email.trim(), cleanCode);
+        } catch (otpErr: any) {
+          setError(otpErr.message || 'Invalid or expired OTP code.');
+          setLoading(false);
+          return;
+        }
+
+        // Re-authenticate session & enter Admin Console
+        await login(email.trim(), password);
         router.push('/dashboard');
       }
     } catch (err: any) {
@@ -52,6 +83,13 @@ export default function LoginPage() {
         <h1 className="text-xl font-bold text-console-text tracking-tight">CivicLens Operations Console</h1>
         <p className="text-xs text-console-muted mt-1">Authenticated Staff & CSC Portal</p>
       </div>
+
+      {infoMsg && (
+        <div className="mb-6 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-start space-x-2">
+          <ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span>{infoMsg}</span>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start space-x-2">
@@ -94,23 +132,40 @@ export default function LoginPage() {
             </div>
           </>
         ) : (
-          <div className="animate-in fade-in duration-300">
-            <div className="mb-4 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-center space-x-2">
+          <div className="animate-in fade-in duration-300 space-y-3">
+            <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs flex items-center space-x-2">
               <ShieldCheck className="h-5 w-5 text-indigo-400 flex-shrink-0" />
-              <span>Multi-Factor Authentication Required. Enter your TOTP code.</span>
+              <span>Multi-Factor Authentication Required. Enter your 6-Digit Email OTP.</span>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-console-text mb-1">6-Digit MFA Code</label>
+              <label className="block text-xs font-medium text-console-text mb-1">6-Digit Email OTP Code</label>
               <input
                 type="text"
                 required
                 maxLength={6}
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
+                placeholder="6-digit OTP code"
                 className="input-field w-full text-center text-lg tracking-[0.5em] font-mono"
+                autoFocus
               />
+            </div>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  setError('');
+                  setInfoMsg(`A new 6-digit Email OTP code has been dispatched to ${email}`);
+                  try {
+                    await requestOtp(email.trim());
+                  } catch (err: any) {}
+                }}
+                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Resend Email OTP Code
+              </button>
             </div>
           </div>
         )}
@@ -119,7 +174,7 @@ export default function LoginPage() {
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <span>{requiresMfa ? 'Verify & Continue' : 'Sign In to Console'}</span>
+            <span>{requiresMfa ? 'Verify & Enter Admin Console' : 'Sign In to Console'}</span>
           )}
         </button>
       </form>

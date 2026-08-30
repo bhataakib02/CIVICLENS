@@ -26,13 +26,13 @@ class LoginInput(BaseModel):
 class OTPRequestInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    phone_number: str = Field(min_length=7, max_length=20)
+    phone_number: str = Field(min_length=3, max_length=320)
 
 
 class OTPVerifyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    phone_number: str = Field(min_length=7, max_length=20)
+    phone_number: str = Field(min_length=3, max_length=320)
     code: str = Field(min_length=1, max_length=10)
 
 

@@ -32,6 +32,10 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Email OTP state
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtpCode, setEmailOtpCode] = useState('');
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -55,11 +59,35 @@ export function RegisterForm() {
 
     setIsLoading(true);
     try {
-      await registerUser(cleanEmail, password);
-      setSuccess('Account created successfully! Redirecting to portal...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      if (!emailOtpSent) {
+        // Step 1: Request 6-digit Email OTP
+        await requestOtp(cleanEmail);
+        setEmailOtpSent(true);
+        setSuccess(`Verification code dispatched to ${cleanEmail}. Enter the code below to finalize your registration.`);
+      } else {
+        // Step 2: Verify 6-digit Email OTP and complete registration
+        const cleanCode = emailOtpCode.trim();
+        if (!/^\d{6}$/.test(cleanCode)) {
+          setError('Please enter the 6-digit verification code.');
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          await verifyOtp(cleanEmail, cleanCode);
+        } catch (otpErr: any) {
+          // If OTP verification fails
+          setError(otpErr.message || 'Invalid or expired OTP verification code.');
+          setIsLoading(false);
+          return;
+        }
+
+        await registerUser(cleanEmail, password);
+        setSuccess('Account verified & created successfully! Redirecting to portal...');
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+      }
     } catch (err: any) {
       setError(err.message || 'Registration failed. This email may already be registered.');
     } finally {
@@ -166,50 +194,99 @@ export function RegisterForm() {
 
       {method === 'email' ? (
         <form onSubmit={handleEmailSubmit} className="space-y-4">
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="citizen@example.gov.in"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
+          {!emailOtpSent ? (
+            <>
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="citizen@example.gov.in"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+              <Input
+                label="Password"
+                type="password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
-          <Input
-            label="Confirm Password"
-            type="password"
-            placeholder="••••••••••••"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
+              <Input
+                label="Confirm Password"
+                type="password"
+                placeholder="••••••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
 
-          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-xs text-slate-600 space-y-1">
-            <div className="font-semibold text-slate-700 mb-1">Account Security Note:</div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Password must be at least 8 characters.</span>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 text-xs text-slate-600 space-y-1">
+                <div className="font-semibold text-slate-700 mb-1">Mandatory Security Verification:</div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>A 6-digit Email OTP code will be sent to verify your address.</span>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full py-3" isLoading={isLoading}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Send OTP &amp; Register Account
+              </Button>
+            </>
+          ) : (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 flex items-center justify-between">
+                <span>OTP dispatched to: <strong>{email}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailOtpSent(false);
+                    setEmailOtpCode('');
+                    setError(null);
+                  }}
+                  className="text-blue-600 underline font-semibold text-xs"
+                >
+                  Change
+                </button>
+              </div>
+
+              <Input
+                label="Enter 6-Digit Email Verification Code"
+                type="text"
+                placeholder="123456"
+                value={emailOtpCode}
+                onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, ''))}
+                maxLength={6}
+                required
+                autoFocus
+              />
+
+              <Button type="submit" className="w-full py-3" isLoading={isLoading}>
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                Verify OTP &amp; Complete Registration
+              </Button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setError(null);
+                    setSuccess(`A new 6-digit OTP verification code has been dispatched to ${email}`);
+                    try {
+                      await requestOtp(email.trim());
+                    } catch (err: any) {}
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Resend Email OTP Code
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Your profile data remains encrypted and strictly private.</span>
-            </div>
-          </div>
-
-          <Button type="submit" className="w-full py-3" isLoading={isLoading}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Register Account
-          </Button>
+          )}
         </form>
       ) : (
         !otpSent ? (
@@ -262,6 +339,22 @@ export function RegisterForm() {
               <ShieldCheck className="w-4 h-4 mr-2" />
               Verify & Complete Registration
             </Button>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setError(null);
+                  setSuccess(`A new 6-digit OTP verification code has been dispatched to +91 ${phone}`);
+                  try {
+                    await requestOtp(phone.trim());
+                  } catch (err: any) {}
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Resend Mobile OTP Code
+              </button>
+            </div>
           </form>
         )
       )}

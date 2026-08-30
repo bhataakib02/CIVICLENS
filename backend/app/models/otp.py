@@ -30,7 +30,7 @@ class OTPRequest(Base):
 
     # PII: stored for lookup during the brief OTP window.
     # phone_number is NOT indexed globally — queries always use phone_number + expires_at.
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    phone_number: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
 
     # Argon2id hash of the OTP plaintext (never stored raw).
     code_hash: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -44,33 +44,93 @@ class OTPProvider(ABC):
 
 
 class TestOTPProvider(OTPProvider):
-    """Real dynamic OTP delivery provider.
+    """Real dynamic OTP delivery provider with multi-channel support.
 
-    - Accepts phone numbers and email addresses.
     - Generates dynamic 6-digit OTP codes.
-    - Outputs prominent real-time delivery logs to console and system logs.
+    - Dispatches real Emails via SMTP if SMTP_USER & SMTP_PASS are set in .env.
+    - Dispatches real SMS via Fast2SMS / Twilio if API keys are set in .env.
+    - Logs prominent delivery box in server console for local testing.
     """
 
     name = "test"
 
     def deliver(self, *, phone_number: str, code: str) -> None:
+        import os
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        recipient = phone_number
+
+        # 1. Console Delivery Logger
         logger.info(
             "==========================================================\n"
-            "   [REAL OTP DELIVERED TO MAIL & MOBILE]                 \n"
+            "   [REAL OTP GENERATED FOR MAIL & MOBILE]                \n"
             "   Target / Recipient: %s                                \n"
             "   REAL 6-DIGIT OTP CODE: %s                              \n"
             "==========================================================",
-            phone_number,
+            recipient,
             code,
         )
         print(
             f"\n==========================================================\n"
-            f"   [REAL OTP DELIVERED TO MAIL & MOBILE]                 \n"
-            f"   Target / Recipient: {phone_number}                    \n"
-            f"   REAL 6-DIGIT OTP CODE: {code}                         \n"
+            f"   [REAL OTP GENERATED FOR MAIL & MOBILE]                \n"
+            f"   Target / Recipient: {recipient}                       \n"
+            f"   REAL 6-DIGIT OTP CODE: {code}                            \n"
             f"==========================================================\n",
             flush=True,
         )
+
+        # 2. Optional Real SMTP Email Delivery
+        smtp_user = os.getenv("SMTP_USER", "") or os.getenv("MAIL_USERNAME", "") or os.getenv("EMAIL_HOST_USER", "")
+        smtp_pass = os.getenv("SMTP_PASS", "") or os.getenv("MAIL_PASSWORD", "") or os.getenv("EMAIL_HOST_PASSWORD", "")
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+        if "@" in recipient and smtp_user and smtp_pass:
+            try:
+                sender_email = os.getenv("SMTP_FROM", smtp_user)
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"Your CivicLens OTP Code is {code}"
+                msg["From"] = f"CivicLens <{sender_email}>"
+                msg["To"] = recipient
+
+                text_content = f"Your CivicLens 6-digit verification code is: {code}. Valid for 10 minutes."
+                html_content = f"""
+                <div style="font-family: Arial, sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 480px; margin: 0 auto; background: #ffffff;">
+                  <h2 style="color: #1e3a8a; margin-top: 0;">CivicLens Identity Verification</h2>
+                  <p style="font-size: 14px; color: #475569;">Use the 6-digit verification code below to complete your login or registration:</p>
+                  <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #2563eb; background: #eff6ff; padding: 18px; text-align: center; border-radius: 10px; margin: 24px 0; border: 1px border-blue-200;">
+                    {code}
+                  </div>
+                  <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">This code is valid for 10 minutes. Do not share this code with anyone.</p>
+                </div>
+                """
+                msg.attach(MIMEText(text_content, "plain"))
+                msg.attach(MIMEText(html_content, "html"))
+
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_pass)
+                    server.sendmail(sender_email, [recipient], msg.as_string())
+
+                logger.info("Real SMTP Email delivered successfully to %s", recipient)
+            except Exception as exc:
+                logger.error("SMTP Email delivery exception: %s", exc)
+
+        # 3. Optional Real Fast2SMS / Twilio Delivery for Mobile Numbers
+        fast2sms_key = os.getenv("FAST2SMS_API_KEY", "")
+        twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
+        if fast2sms_key and not "@" in recipient:
+            try:
+                Fast2SMSOTPProvider().deliver(phone_number=recipient, code=code)
+            except Exception as exc:
+                logger.error("Fast2SMS delivery exception: %s", exc)
+        elif twilio_sid and not "@" in recipient:
+            try:
+                TwilioOTPProvider().deliver(phone_number=recipient, code=code)
+            except Exception as exc:
+                logger.error("Twilio delivery exception: %s", exc)
 
 
 class AWSSNSOTPProvider(OTPProvider):

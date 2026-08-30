@@ -52,17 +52,17 @@ export function ProfileForm() {
   const [familySize, setFamilySize] = useState(user?.family_size?.toString() || '');
 
   // Extended Attributes (Mobile, Qualification, Avatar)
-  const [mobileNumber, setMobileNumber] = useState(user?.phone_number || '9876543210');
-  const [qualification, setQualification] = useState(user?.education_level || 'UNDERGRADUATE');
+  const [mobileNumber, setMobileNumber] = useState(user?.phone_number || user?.email || '');
+  const [qualification, setQualification] = useState(user?.education_level || '');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
 
   // Complete Address State
   const [addressId, setAddressId] = useState<string | null>(null);
-  const [line1, setLine1] = useState('1 Demo Road, Colony Street');
-  const [line2, setLine2] = useState('Near Central Market');
-  const [district, setDistrict] = useState('Demo District');
-  const [stateName, setStateName] = useState('West Bengal');
-  const [pincode, setPincode] = useState('700001');
+  const [line1, setLine1] = useState('');
+  const [line2, setLine2] = useState('');
+  const [district, setDistrict] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [pincode, setPincode] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,8 +78,8 @@ export function ProfileForm() {
     setIncome(user.declared_annual_income?.toString() || '');
     setDisability(user.disability_status ? 'true' : 'false');
     setFamilySize(user.family_size?.toString() || '');
-    setMobileNumber(user.phone_number || '9876543210');
-    setQualification(user.education_level || 'UNDERGRADUATE');
+    setMobileNumber(user.phone_number || user.email || '');
+    setQualification(user.education_level || '');
   }, [user]);
 
   useEffect(() => {
@@ -92,11 +92,11 @@ export function ProfileForm() {
           setLine1(primary.line1 || '');
           setLine2(primary.line2 || '');
           setDistrict(primary.district || '');
-          setStateName(primary.state || 'West Bengal');
+          setStateName(primary.state || '');
           setPincode(primary.pincode || '');
         }
       } catch (err) {
-        // Fall back to default state values
+        // Keep blank fields if no address found
       }
     }
     loadAddressData();
@@ -225,12 +225,14 @@ export function ProfileForm() {
 
           <div className="text-center sm:text-left space-y-1 flex-1">
             <div className="flex items-center justify-center sm:justify-start gap-2">
-              <h2 className="text-xl font-bold">{user?.email?.split('@')[0] || 'Verified Citizen'}</h2>
+              <h2 className="text-xl font-bold">
+                {user?.email ? user.email.split('@')[0] : (user?.phone_number ? `Citizen (${user.phone_number})` : 'Verified Citizen')}
+              </h2>
               <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
                 {t.profile.verifiedBadge}
               </span>
             </div>
-            <p className="text-xs text-blue-100 font-mono">Mobile: +91 {mobileNumber}</p>
+            <p className="text-xs text-blue-100 font-mono">Contact: {user?.phone_number ? `+91 ${user.phone_number}` : (user?.email || mobileNumber)}</p>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
               {AVATARS.map((avatar, idx) => (
                 <button
