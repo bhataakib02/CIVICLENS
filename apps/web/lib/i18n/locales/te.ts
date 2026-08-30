@@ -44,5 +44,45 @@ export const te: typeof en = {
     settings: 'సెట్టింగ్‌లు',
     logout: 'లాగ్ అవుట్',
     login: 'లాగిన్'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'నమస్కారం, పౌరుడు',
+    profileCompleteness: 'ప్రొఫైల్ పూర్తి స్థాయి',
+    completeProfilePrompt: 'ఖచ్చితమైన అర్హత తనిఖీ కోసం మీ ప్రొఫైల్‌ను పూర్తి చేయండి.',
+    eligibleSchemes: 'అర్హమైన పథకాలు',
+    activeApplications: 'క్రియాశీల దరఖాస్తులు',
+    unreadNotifications: 'చదవని నోటిఫికేషన్లు'
+  },
+  profile: {
+    ...en.profile,
+    title: 'పౌర ప్రొఫైల్',
+    subtitle: 'ఖచ్చితమైన పథకం సరిపోలికకు మీ వ్యక్తిగత వివరాలను నవీకరించండి.',
+    dob: 'జన్మ తేదీ',
+    gender: 'లింగం',
+    category: 'వర్గం (సామాజిక / ఆర్థిక)',
+    occupation: 'వృత్తి',
+    income: 'ప్రకటించిన వార్షిక ఆదాయం (₹)',
+    disability: 'వికలాంగత స్థితి',
+    familySize: 'కుటుంబ సభ్యుల సంఖ్య',
+    sectionContact: 'సంప్రదింపు మరియు విద్యా అర్హత',
+    sectionPersonal: 'వ్యక్తిగత మరియు ఆర్థిక వివరాలు',
+    sectionAddress: 'పూర్తి నివాస చిరునామా',
+    mobileLabel: 'మొబైల్ నంబర్ (+91)',
+    qualLabel: 'విద్యా అర్హత',
+    genderSelect: 'లింగం ఎంచుకోండి',
+    genderFemale: 'స్త్రీ',
+    genderMale: 'పురుషుడు',
+    genderOther: 'ఇతర',
+    categorySelect: 'వర్గం ఎంచుకోండి',
+    categoryGeneral: 'సాధారణ',
+    disabilityNo: 'లేదు',
+    disabilityYes: 'అవును',
+    addrDistrict: 'జిల్లా',
+    addrState: 'రాష్ట్రం / కేంద్రపాలిత ప్రాంతం',
+    addrPincode: 'పిన్ కోడ్ (6 అంకెలు)',
+    saveBtn: 'ప్రొఫైల్ మరియు చిరునామా సేవ్ చేయండి',
+    verifiedBadge: 'ధృవీకరించిన ప్రొఫైల్'
   }
 };
+

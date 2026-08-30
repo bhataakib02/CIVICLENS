@@ -44,5 +44,45 @@ export const gu: typeof en = {
     settings: 'સેટિંગ્સ',
     logout: 'સાઇન આઉટ',
     login: 'સાઇન ઇન'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'નમસ્કાર, નાગરિક',
+    profileCompleteness: 'પ્રોફાઇલ સંપૂર્ણતા',
+    completeProfilePrompt: 'ચોક્કસ પાત્રતા ચકાસણી માટે તમારી પ્રોફાઇલ પૂર્ણ કરો.',
+    eligibleSchemes: 'પાત્ર યોજનાઓ',
+    activeApplications: 'સક્રિય અરજીઓ',
+    unreadNotifications: 'ન વાંચેલ સૂચનાઓ'
+  },
+  profile: {
+    ...en.profile,
+    title: 'નાગરિક પ્રોફાઇલ',
+    subtitle: 'ચોક્કસ યોજના મેળ માટે તમારી વ્યક્તિગત માહિતી અદ્યતન રાખો.',
+    dob: 'જન્મ તારીખ',
+    gender: 'લિંગ',
+    category: 'શ્રેણી (સામાજિક / આર્થિક)',
+    occupation: 'વ્યવસાય',
+    income: 'જાહેર વાર્ષિક આવક (₹)',
+    disability: 'અક્ષમતાની સ્થિતિ',
+    familySize: 'કુટુંબના સભ્યોની સંખ્યા',
+    sectionContact: 'સંપર્ક અને શૈક્ષણિક લાયકાત',
+    sectionPersonal: 'વ્યક્તિગત અને નાણાકીય વિગતો',
+    sectionAddress: 'સંપૂર્ણ રહેઠાણ સરનામું',
+    mobileLabel: 'મોબાઇલ નંબર (+91)',
+    qualLabel: 'શૈક્ષણિક લાયકાત',
+    genderSelect: 'લિંગ પસંદ કરો',
+    genderFemale: 'સ્ત્રી',
+    genderMale: 'પુરૂષ',
+    genderOther: 'અન્ય',
+    categorySelect: 'શ્રેણી પસંદ કરો',
+    categoryGeneral: 'સામાન્ય',
+    disabilityNo: 'ના',
+    disabilityYes: 'હા',
+    addrDistrict: 'જિલ્લો',
+    addrState: 'રાજ્ય / કેન્દ્રશાસિત પ્રદેશ',
+    addrPincode: 'પિનકોડ (6 અંક)',
+    saveBtn: 'પ્રોફાઇલ અને સરનામું સાચવો',
+    verifiedBadge: 'ચકાસાયેલ પ્રોફાઇલ'
   }
 };
+

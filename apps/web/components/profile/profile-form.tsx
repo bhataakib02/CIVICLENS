@@ -67,6 +67,20 @@ export function ProfileForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Resync form fields whenever the user object is updated (e.g. after refreshProfile())
+  useEffect(() => {
+    if (!user) return;
+    setDateOfBirth(user.date_of_birth || '');
+    setGender(user.gender || '');
+    setCategory(user.category || '');
+    setOccupation(user.occupation || '');
+    setIncome(user.declared_annual_income?.toString() || '');
+    setDisability(user.disability_status ? 'true' : 'false');
+    setFamilySize(user.family_size?.toString() || '');
+    setMobileNumber(user.phone_number || '9876543210');
+    setQualification(user.education_level || 'UNDERGRADUATE');
+  }, [user]);
+
   useEffect(() => {
     async function loadAddressData() {
       try {
@@ -86,6 +100,7 @@ export function ProfileForm() {
     }
     loadAddressData();
   }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +174,7 @@ export function ProfileForm() {
             <div className="flex items-center justify-center sm:justify-start gap-2">
               <h2 className="text-xl font-bold">{user?.email?.split('@')[0] || 'Verified Citizen'}</h2>
               <span className="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
-                VERIFIED PROFILE
+                {t.profile.verifiedBadge}
               </span>
             </div>
             <p className="text-xs text-blue-100 font-mono">Mobile: +91 {mobileNumber}</p>
@@ -211,30 +226,30 @@ export function ProfileForm() {
           <CardHeader>
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Contact & Educational Qualification
+              {t.profile.sectionContact}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Mobile Number (+91)"
+              label={t.profile.mobileLabel}
               type="text"
               value={mobileNumber}
               onChange={(e) => setMobileNumber(e.target.value)}
-              placeholder="10-digit Mobile Number"
+              placeholder={t.profile.mobilePlaceholder}
             />
 
             <Select
-              label="Educational Qualification"
+              label={t.profile.qualLabel}
               value={qualification}
               onChange={(e) => setQualification(e.target.value)}
               options={[
-                { value: 'PRIMARY', label: 'Primary School' },
-                { value: 'SECONDARY', label: 'Secondary School (10th Pass)' },
-                { value: 'HIGHER_SECONDARY', label: 'Higher Secondary (12th Pass)' },
-                { value: 'DIPLOMA', label: 'Diploma / ITI Technical' },
-                { value: 'UNDERGRADUATE', label: 'Undergraduate (Bachelor Degree)' },
-                { value: 'POSTGRADUATE', label: 'Postgraduate (Master Degree)' },
-                { value: 'DOCTORATE', label: 'Doctorate (Ph.D. / Research)' }
+                { value: 'PRIMARY', label: t.profile.qualPrimary },
+                { value: 'SECONDARY', label: t.profile.qualSecondary },
+                { value: 'HIGHER_SECONDARY', label: t.profile.qualHigherSec },
+                { value: 'DIPLOMA', label: t.profile.qualDiploma },
+                { value: 'UNDERGRADUATE', label: t.profile.qualUndergrad },
+                { value: 'POSTGRADUATE', label: t.profile.qualPostgrad },
+                { value: 'DOCTORATE', label: t.profile.qualDoctorate }
               ]}
             />
           </CardContent>
@@ -245,7 +260,7 @@ export function ProfileForm() {
           <CardHeader>
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Personal & Financial Attributes
+              {t.profile.sectionPersonal}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -261,10 +276,10 @@ export function ProfileForm() {
               value={gender}
               onChange={(e) => setGender(e.target.value)}
               options={[
-                { value: '', label: 'Select Gender' },
-                { value: 'female', label: 'Female' },
-                { value: 'male', label: 'Male' },
-                { value: 'other', label: 'Other' }
+                { value: '', label: t.profile.genderSelect },
+                { value: 'female', label: t.profile.genderFemale },
+                { value: 'male', label: t.profile.genderMale },
+                { value: 'other', label: t.profile.genderOther }
               ]}
             />
 
@@ -273,19 +288,19 @@ export function ProfileForm() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               options={[
-                { value: '', label: 'Select Category' },
-                { value: 'general', label: 'General' },
-                { value: 'obc', label: 'OBC (Other Backward Class)' },
-                { value: 'sc', label: 'SC (Scheduled Caste)' },
-                { value: 'st', label: 'ST (Scheduled Tribe)' },
-                { value: 'ews', label: 'EWS (Economically Weaker Section)' }
+                { value: '', label: t.profile.categorySelect },
+                { value: 'general', label: t.profile.categoryGeneral },
+                { value: 'obc', label: t.profile.categoryObc },
+                { value: 'sc', label: t.profile.categorySc },
+                { value: 'st', label: t.profile.categorySt },
+                { value: 'ews', label: t.profile.categoryEws }
               ]}
             />
 
             <Input
               label={t.profile.occupation}
               type="text"
-              placeholder="e.g. Farmer / Student / Self-Employed"
+              placeholder={t.profile.occupationPlaceholder}
               value={occupation}
               onChange={(e) => setOccupation(e.target.value)}
             />
@@ -304,8 +319,8 @@ export function ProfileForm() {
               value={disability}
               onChange={(e) => setDisability(e.target.value)}
               options={[
-                { value: 'false', label: 'No' },
-                { value: 'true', label: 'Yes' }
+                { value: 'false', label: t.profile.disabilityNo },
+                { value: 'true', label: t.profile.disabilityYes }
               ]}
             />
 
@@ -324,47 +339,47 @@ export function ProfileForm() {
           <CardHeader>
             <CardTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Complete Residential Address
+              {t.profile.sectionAddress}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Address Line 1 (House No, Building, Street)"
+              label={t.profile.addrLine1}
               type="text"
               value={line1}
               onChange={(e) => setLine1(e.target.value)}
-              placeholder="123 Colony Road"
+              placeholder={t.profile.addrLine1Placeholder}
             />
 
             <Input
-              label="Address Line 2 (Locality, Landmark)"
+              label={t.profile.addrLine2}
               type="text"
               value={line2}
               onChange={(e) => setLine2(e.target.value)}
-              placeholder="Near Main Park"
+              placeholder={t.profile.addrLine2Placeholder}
             />
 
             <Input
-              label="District"
+              label={t.profile.addrDistrict}
               type="text"
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
-              placeholder="District Name"
+              placeholder={t.profile.addrDistrictPlaceholder}
             />
 
             <Select
-              label="State / Union Territory"
+              label={t.profile.addrState}
               value={stateName}
               onChange={(e) => setStateName(e.target.value)}
               options={INDIAN_STATES.map((s) => ({ value: s, label: s }))}
             />
 
             <Input
-              label="Pincode (6 digits)"
+              label={t.profile.addrPincode}
               type="text"
               value={pincode}
               onChange={(e) => setPincode(e.target.value)}
-              placeholder="700001"
+              placeholder={t.profile.addrPincodePlaceholder}
             />
           </CardContent>
         </Card>
@@ -372,7 +387,7 @@ export function ProfileForm() {
         <div className="flex justify-end pt-2">
           <Button type="submit" isLoading={isSubmitting} className="px-8 py-3">
             <Save className="w-4 h-4 mr-2" />
-            {t.common.save} Profile
+            {t.profile.saveBtn}
           </Button>
         </div>
       </form>

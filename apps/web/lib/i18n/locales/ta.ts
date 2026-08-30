@@ -44,5 +44,45 @@ export const ta: typeof en = {
     settings: 'அமைப்புகள்',
     logout: 'வெளியேறு',
     login: 'உள்நுழை'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'வணக்கம், குடிமகன்',
+    profileCompleteness: 'சுயவிவர நிறைவு',
+    completeProfilePrompt: 'துல்லியமான தகுதி சரிபார்ப்புக்கு உங்கள் சுயவிவரத்தை நிறைவு செய்யுங்கள்.',
+    eligibleSchemes: 'தகுதியான திட்டங்கள்',
+    activeApplications: 'செயல்பாட்டு விண்ணப்பங்கள்',
+    unreadNotifications: 'படிக்காத அறிவிப்புகள்'
+  },
+  profile: {
+    ...en.profile,
+    title: 'குடிமகன் சுயவிவரம்',
+    subtitle: 'திட்ட பொருத்தத்திற்கு உங்கள் தகவல்களை புதுப்பித்து வையுங்கள்.',
+    dob: 'பிறந்த தேதி',
+    gender: 'பாலினம்',
+    category: 'பிரிவு (சமூக / பொருளாதார)',
+    occupation: 'தொழில்',
+    income: 'அறிவிக்கப்பட்ட வருடாந்திர வருமானம் (₹)',
+    disability: 'மாற்றுத்திறனாளி நிலை',
+    familySize: 'குடும்ப உறுப்பினர்கள் எண்ணிக்கை',
+    sectionContact: 'தொடர்பு மற்றும் கல்வித் தகுதி',
+    sectionPersonal: 'தனிப்பட்ட மற்றும் நிதி விவரங்கள்',
+    sectionAddress: 'முழுமையான குடியிருப்பு முகவரி',
+    mobileLabel: 'மொபைல் எண் (+91)',
+    qualLabel: 'கல்வித் தகுதி',
+    genderSelect: 'பாலினம் தேர்வு செய்யவும்',
+    genderFemale: 'பெண்',
+    genderMale: 'ஆண்',
+    genderOther: 'மற்றவை',
+    categorySelect: 'பிரிவு தேர்வு செய்யவும்',
+    categoryGeneral: 'பொதுவான',
+    disabilityNo: 'இல்லை',
+    disabilityYes: 'ஆம்',
+    addrDistrict: 'மாவட்டம்',
+    addrState: 'மாநிலம் / யூனியன் பிரதேசம்',
+    addrPincode: 'பின்கோடு (6 இலக்கங்கள்)',
+    saveBtn: 'சுயவிவரம் மற்றும் முகவரி சேமிக்கவும்',
+    verifiedBadge: 'சரிபார்க்கப்பட்ட சுயவிவரம்'
   }
 };
+

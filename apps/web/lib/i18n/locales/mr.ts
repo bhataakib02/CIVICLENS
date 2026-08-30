@@ -44,5 +44,45 @@ export const mr: typeof en = {
     settings: 'सेटिंग्ज',
     logout: 'साइन आउट',
     login: 'साइन इन'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'नमस्कार, नागरिक',
+    profileCompleteness: 'प्रोफाइल पूर्णता',
+    completeProfilePrompt: 'अचूक पात्रता तपासणीसाठी आपली प्रोफाइल पूर्ण करा.',
+    eligibleSchemes: 'पात्र योजना',
+    activeApplications: 'सक्रिय अर्ज',
+    unreadNotifications: 'न वाचलेल्या सूचना'
+  },
+  profile: {
+    ...en.profile,
+    title: 'नागरिक प्रोफाइल',
+    subtitle: 'अचूक योजना जुळणीसाठी आपली वैयक्तिक माहिती अद्ययावत ठेवा.',
+    dob: 'जन्म तारीख',
+    gender: 'लिंग',
+    category: 'श्रेणी (सामाजिक / आर्थिक)',
+    occupation: 'व्यवसाय',
+    income: 'घोषित वार्षिक उत्पन्न (₹)',
+    disability: 'दिव्यांगता स्थिती',
+    familySize: 'कुटुंबातील सदस्यांची संख्या',
+    sectionContact: 'संपर्क आणि शैक्षणिक पात्रता',
+    sectionPersonal: 'वैयक्तिक आणि आर्थिक तपशील',
+    sectionAddress: 'संपूर्ण निवासी पत्ता',
+    mobileLabel: 'मोबाइल नंबर (+91)',
+    qualLabel: 'शैक्षणिक पात्रता',
+    genderSelect: 'लिंग निवडा',
+    genderFemale: 'महिला',
+    genderMale: 'पुरुष',
+    genderOther: 'इतर',
+    categorySelect: 'श्रेणी निवडा',
+    categoryGeneral: 'सामान्य',
+    disabilityNo: 'नाही',
+    disabilityYes: 'होय',
+    addrDistrict: 'जिल्हा',
+    addrState: 'राज्य / केंद्रशासित प्रदेश',
+    addrPincode: 'पिनकोड (6 अंक)',
+    saveBtn: 'प्रोफाइल आणि पत्ता जतन करा',
+    verifiedBadge: 'सत्यापित प्रोफाइल'
   }
 };
+

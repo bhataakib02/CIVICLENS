@@ -44,5 +44,45 @@ export const kn: typeof en = {
     settings: 'ಸಂಯೋಜನೆಗಳು',
     logout: 'ಸೈನ್ ಔಟ್',
     login: 'ಸೈನ್ ಇನ್'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'ನಮಸ್ಕಾರ, ನಾಗರಿಕ',
+    profileCompleteness: 'ಪ್ರೊಫೈಲ್ ಸಂಪೂರ್ಣತೆ',
+    completeProfilePrompt: 'ನಿಖರ ಅರ್ಹತೆ ಪರಿಶೀಲನೆಗಾಗಿ ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಪೂರ್ಣಗೊಳಿಸಿ.',
+    eligibleSchemes: 'ಅರ್ಹ ಯೋಜನೆಗಳು',
+    activeApplications: 'ಸಕ್ರಿಯ ಅರ್ಜಿಗಳು',
+    unreadNotifications: 'ಓದದ ಸೂಚನೆಗಳು'
+  },
+  profile: {
+    ...en.profile,
+    title: 'ನಾಗರಿಕ ಪ್ರೊಫೈಲ್',
+    subtitle: 'ನಿಖರ ಯೋಜನೆ ಹೊಂದಾಣಿಕೆಗಾಗಿ ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ ನವೀಕರಿಸಿ.',
+    dob: 'ಜನ್ಮ ದಿನಾಂಕ',
+    gender: 'ಲಿಂಗ',
+    category: 'ವರ್ಗ (ಸಾಮಾಜಿಕ / ಆರ್ಥಿಕ)',
+    occupation: 'ವೃತ್ತಿ',
+    income: 'ಘೋಷಿತ ವಾರ್ಷಿಕ ಆದಾಯ (₹)',
+    disability: 'ಅಂಗವಿಕಲತೆ ಸ್ಥಿತಿ',
+    familySize: 'ಕುಟುಂಬ ಸದಸ್ಯರ ಸಂಖ್ಯೆ',
+    sectionContact: 'ಸಂಪರ್ಕ ಮತ್ತು ಶೈಕ್ಷಣಿಕ ಅರ್ಹತೆ',
+    sectionPersonal: 'ವೈಯಕ್ತಿಕ ಮತ್ತು ಆರ್ಥಿಕ ವಿವರಗಳು',
+    sectionAddress: 'ಸಂಪೂರ್ಣ ವಾಸಸ್ಥಾನ ವಿಳಾಸ',
+    mobileLabel: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (+91)',
+    qualLabel: 'ಶೈಕ್ಷಣಿಕ ಅರ್ಹತೆ',
+    genderSelect: 'ಲಿಂಗ ಆಯ್ಕೆ ಮಾಡಿ',
+    genderFemale: 'ಮಹಿಳೆ',
+    genderMale: 'ಪುರುಷ',
+    genderOther: 'ಇತರ',
+    categorySelect: 'ವರ್ಗ ಆಯ್ಕೆ ಮಾಡಿ',
+    categoryGeneral: 'ಸಾಮಾನ್ಯ',
+    disabilityNo: 'ಇಲ್ಲ',
+    disabilityYes: 'ಹೌದು',
+    addrDistrict: 'ಜಿಲ್ಲೆ',
+    addrState: 'ರಾಜ್ಯ / ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶ',
+    addrPincode: 'ಪಿನ್‌ಕೋಡ್ (6 ಅಂಕಿ)',
+    saveBtn: 'ಪ್ರೊಫೈಲ್ ಮತ್ತು ವಿಳಾಸ ಉಳಿಸಿ',
+    verifiedBadge: 'ಪರಿಶೀಲಿಸಿದ ಪ್ರೊಫೈಲ್'
   }
 };
+

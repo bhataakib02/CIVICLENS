@@ -44,5 +44,45 @@ export const bn: typeof en = {
     settings: 'সেটিংস',
     logout: 'সাইন আউট',
     login: 'সাইন ইন'
+  },
+  dashboard: {
+    ...en.dashboard,
+    welcomeTitle: 'নমস্কার, নাগরিক',
+    profileCompleteness: 'প্রোফাইল সম্পূর্ণতা',
+    completeProfilePrompt: 'সঠিক যোগ্যতা যাচাইয়ের জন্য আপনার প্রোফাইল সম্পূর্ণ করুন।',
+    eligibleSchemes: 'যোগ্য প্রকল্প',
+    activeApplications: 'সক্রিয় আবেদন',
+    unreadNotifications: 'অপঠিত বিজ্ঞপ্তি'
+  },
+  profile: {
+    ...en.profile,
+    title: 'নাগরিক প্রোফাইল',
+    subtitle: 'সঠিক প্রকল্প মিলের জন্য আপনার ব্যক্তিগত তথ্য আপডেট রাখুন।',
+    dob: 'জন্ম তারিখ',
+    gender: 'লিঙ্গ',
+    category: 'বিভাগ (সামাজিক / অর্থনৈতিক)',
+    occupation: 'পেশা',
+    income: 'ঘোষিত বার্ষিক আয় (₹)',
+    disability: 'প্রতিবন্ধিতার অবস্থা',
+    familySize: 'পরিবারের সদস্য সংখ্যা',
+    sectionContact: 'যোগাযোগ ও শিক্ষাগত যোগ্যতা',
+    sectionPersonal: 'ব্যক্তিগত ও আর্থিক বিবরণ',
+    sectionAddress: 'সম্পূর্ণ আবাসিক ঠিকানা',
+    mobileLabel: 'মোবাইল নম্বর (+91)',
+    qualLabel: 'শিক্ষাগত যোগ্যতা',
+    genderSelect: 'লিঙ্গ নির্বাচন করুন',
+    genderFemale: 'মহিলা',
+    genderMale: 'পুরুষ',
+    genderOther: 'অন্যান্য',
+    categorySelect: 'বিভাগ নির্বাচন করুন',
+    categoryGeneral: 'সাধারণ',
+    disabilityNo: 'না',
+    disabilityYes: 'হ্যাঁ',
+    addrDistrict: 'জেলা',
+    addrState: 'রাজ্য / কেন্দ্রশাসিত অঞ্চল',
+    addrPincode: 'পিনকোড (৬ সংখ্যা)',
+    saveBtn: 'প্রোফাইল ও ঠিকানা সংরক্ষণ করুন',
+    verifiedBadge: 'যাচাইকৃত প্রোফাইল'
   }
 };
+
