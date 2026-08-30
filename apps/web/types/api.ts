@@ -7,6 +7,9 @@ export interface TokenPair {
 
 export interface CitizenProfile {
   id: string;
+  email?: string | null;
+  phone_number?: string | null;
+  education_level?: string | null;
   date_of_birth?: string | null;
   gender?: string | null;
   category?: string | null;
@@ -35,6 +38,8 @@ export interface Address {
   district: string;
   pincode: string;
   line1: string;
+  line2?: string | null;
+  is_primary?: boolean;
 }
 
 export interface AddressInput {
@@ -43,6 +48,8 @@ export interface AddressInput {
   district: string;
   pincode: string;
   line1: string;
+  line2?: string | null;
+  is_primary?: boolean;
 }
 
 export interface SchemeSummary {

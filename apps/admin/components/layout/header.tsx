@@ -4,6 +4,7 @@ import React from 'react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { Shield, Bell } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { ThemeToggle } from './theme-toggle';
 
 export function Header() {
   const { account } = useAuth();
@@ -18,6 +19,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center space-x-4">
+        <ThemeToggle />
         {account && (
           <div className="flex items-center space-x-2 border-r border-console-border pr-4">
             <Shield className="h-4 w-4 text-console-accent" />

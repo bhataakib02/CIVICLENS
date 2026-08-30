@@ -3,8 +3,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { en } from './locales/en';
 import { hi } from './locales/hi';
+import { ur } from './locales/ur';
+import { bn } from './locales/bn';
+import { mr } from './locales/mr';
+import { ta } from './locales/ta';
+import { te } from './locales/te';
+import { gu } from './locales/gu';
+import { kn } from './locales/kn';
 
-export type Language = 'en' | 'hi';
+export type Language = 'en' | 'hi' | 'ur' | 'bn' | 'mr' | 'ta' | 'te' | 'gu' | 'kn';
 type TranslationKeys = typeof en;
 
 interface I18nContextType {
@@ -13,7 +20,17 @@ interface I18nContextType {
   t: TranslationKeys;
 }
 
-const translations: Record<Language, TranslationKeys> = { en, hi };
+const translations: Record<Language, TranslationKeys> = {
+  en,
+  hi,
+  ur,
+  bn,
+  mr,
+  ta,
+  te,
+  gu,
+  kn
+};
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
@@ -23,7 +40,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLang = localStorage.getItem('civiclens_lang') as Language;
-      if (savedLang && (savedLang === 'en' || savedLang === 'hi')) {
+      if (savedLang && translations[savedLang]) {
         setLanguageState(savedLang);
       }
     }
