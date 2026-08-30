@@ -10,11 +10,11 @@
   }
 
   body {
-    @apply bg-console-bg text-console-text antialiased;
+    @apply bg-slate-50 text-slate-900 dark:bg-console-bg dark:text-console-text antialiased transition-colors duration-200;
   }
 
   * {
-    @apply border-console-border;
+    @apply border-slate-200 dark:border-console-border;
   }
 
   ::-webkit-scrollbar {

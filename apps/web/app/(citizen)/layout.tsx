@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { useRouter } from 'next/navigation';
 import LoadingPage from '@/app/loading';
 
+import { FloatingAssistantWidget } from '@/components/assistant/floating-assistant-widget';
+
 export default function CitizenLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -23,5 +25,10 @@ export default function CitizenLayout({ children }: { children: React.ReactNode 
     return null;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <FloatingAssistantWidget />
+    </>
+  );
 }

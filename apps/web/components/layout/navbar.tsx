@@ -32,7 +32,6 @@ export function Navbar() {
     { label: t.nav.dashboard, href: '/dashboard', icon: LayoutDashboard },
     { label: t.nav.schemes, href: '/schemes', icon: Search },
     { label: t.nav.eligibility, href: '/eligibility', icon: CheckSquare },
-    { label: t.nav.assistant, href: '/assistant', icon: Bot },
     { label: t.nav.documents, href: '/documents', icon: FileCheck },
     { label: t.nav.applications, href: '/applications', icon: FolderOpen },
     { label: t.nav.notifications, href: '/notifications', icon: Bell },
