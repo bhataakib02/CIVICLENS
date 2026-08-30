@@ -34,7 +34,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: civiclens-migration
-    command: ["sh", "-c", "alembic upgrade head && python -m app.seeds.seed_all"]
+    command: ["sh", "-c", "alembic upgrade head"]
     environment:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+psycopg://civiclens:civiclens_dev_password@postgres:5432/civiclens

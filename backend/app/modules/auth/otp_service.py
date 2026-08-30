@@ -91,15 +91,10 @@ def _normalize_phone(phone: str) -> str:
 
 
 def _generate_otp_code(settings: Settings) -> str:
-    """Generate a cryptographically secure OTP code.
+    """Generate a cryptographically secure 6-digit random OTP code.
 
-    In non-production environment with OTP_TEST_FIXED_CODE=true, returns '000000'
-    for deterministic test/demo assertions. NEVER fixed in production.
+    Always generates a dynamic real random 6-digit OTP code (e.g. 748291).
     """
-    if not getattr(settings, "is_production", False) and getattr(
-        settings, "otp_test_fixed_code", True
-    ):
-        return "000000"
     return "".join(secrets.choice(_OTP_CHARS) for _ in range(_OTP_LENGTH))
 
 

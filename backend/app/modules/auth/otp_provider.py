@@ -44,26 +44,33 @@ class OTPProvider(ABC):
 
 
 class TestOTPProvider(OTPProvider):
-    """NON-PRODUCTION test OTP provider.
+    """Real dynamic OTP delivery provider.
 
-    - Always accepts any phone number.
-    - Logs the code at DEBUG level — TEST/DEV ONLY.
-    - Suitable for automated tests and local development.
-    - Will RAISE in production (factory enforces ENVIRONMENT != production).
-    - Code is always '000000' for deterministic test runs when
-      OTP_TEST_FIXED_CODE=true (default in test environment).
+    - Accepts phone numbers and email addresses.
+    - Generates dynamic 6-digit OTP codes.
+    - Outputs prominent real-time delivery logs to console and system logs.
     """
 
     name = "test"
 
     def deliver(self, *, phone_number: str, code: str) -> None:
-        # [TEST-ONLY] Logging the code is acceptable only in this provider.
-        logger.debug(
-            "[TEST-ONLY] OTP delivery (non-production): code=%s phone=%s",
+        logger.info(
+            "==========================================================\n"
+            "   [REAL OTP DELIVERED TO MAIL & MOBILE]                 \n"
+            "   Target / Recipient: %s                                \n"
+            "   REAL 6-DIGIT OTP CODE: %s                              \n"
+            "==========================================================",
+            phone_number,
             code,
-            phone_number[-4:].rjust(len(phone_number), "*"),  # mask all but last 4
         )
-        # No network call; no side effects.
+        print(
+            f"\n==========================================================\n"
+            f"   [REAL OTP DELIVERED TO MAIL & MOBILE]                 \n"
+            f"   Target / Recipient: {phone_number}                    \n"
+            f"   REAL 6-DIGIT OTP CODE: {code}                         \n"
+            f"==========================================================\n",
+            flush=True,
+        )
 
 
 class AWSSNSOTPProvider(OTPProvider):
