@@ -86,44 +86,72 @@ def sanitize_external_text(text: str) -> str:
 
 
 class OpportunityExtractor:
-    """Extracts structured opportunity schema from raw page text."""
+    """Extracts structured opportunity schema from raw page text (prompt §13, §14, §15)."""
 
     def extract(self, raw_text: str, source_url: str, default_org: str = "Unknown") -> OpportunityExtractionSchema:
         clean_text = sanitize_external_text(raw_text)
 
-        # Rule-based fallback extraction
-        title_match = re.search(r"(?i)(?:title|recruitment|vacancy|scholarship|scheme):\s*([^\n\.]+)", clean_text)
-        title = title_match.group(1).strip() if title_match else (clean_text[:120] if clean_text else "Opportunity Notice")
+        # Rule-based title extraction
+        title_match = re.search(r"(?i)(?:title|recruitment|vacancy|scholarship|scheme|fellowship|apprenticeship):\s*([^\n\.]+)", clean_text)
+        if not title_match:
+            # Fallback to header or first line
+            h1_match = re.search(r"(?i)(?:h1|heading):\s*([^\n\.]+)", clean_text)
+            title = h1_match.group(1).strip() if h1_match else (clean_text[:120] if clean_text else "Opportunity Notice")
+        else:
+            title = title_match.group(1).strip()
 
-        org_match = re.search(r"(?i)(?:organization|department|ministry|company|board):\s*([^\n\.]+)", clean_text)
+        org_match = re.search(r"(?i)(?:organization|department|ministry|company|board|provider):\s*([^\n\.]+)", clean_text)
         org = org_match.group(1).strip() if org_match else default_org
 
         # Detect opportunity type from keywords
         opp_type = "JOB"
         text_lower = clean_text.lower()
-        if "internship" in text_lower or "intern" in text_lower:
+        url_lower = source_url.lower()
+        combined_context = f"{url_lower} {text_lower}"
+
+        if "internship" in combined_context or "intern" in combined_context:
             opp_type = "INTERNSHIP"
-        elif "scholarship" in text_lower:
+        elif "scholarship" in combined_context:
             opp_type = "SCHOLARSHIP"
-        elif "scheme" in text_lower or "yojana" in text_lower:
+        elif "scheme" in combined_context or "yojana" in combined_context:
             opp_type = "GOVERNMENT_SCHEME"
-        elif "fellowship" in text_lower:
+        elif "fellowship" in combined_context:
             opp_type = "FELLOWSHIP"
-        elif "apprenticeship" in text_lower or "apprentice" in text_lower:
+        elif "apprenticeship" in combined_context or "apprentice" in combined_context:
             opp_type = "APPRENTICESHIP"
-        elif "training" in text_lower or "skill" in text_lower:
+        elif "training" in combined_context or "skill" in combined_context:
             opp_type = "TRAINING"
 
-        # Detect deadline date format (e.g. 2026-09-30 or 30 Sep 2026)
+        # Explicit date extractions (Prompt §15 & §16)
+        open_date_match = re.search(
+            r"(?i)(?:open(?:s|ing)?\s+date|starts?\s+from|application\s+opens):\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4})",
+            clean_text,
+        )
+        open_date_str = open_date_match.group(1).strip() if open_date_match else None
+
         deadline_match = re.search(
-            r"(?i)(?:deadline|last date|closing date|apply before):\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4})",
+            r"(?i)(?:deadline|last\s+date|closing\s+date|apply\s+before|valid\s+till):\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4})",
             clean_text,
         )
         deadline_str = deadline_match.group(1).strip() if deadline_match else None
 
+        pub_date_match = re.search(
+            r"(?i)(?:published|notification\s+date|date\s+of\s+release):\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4})",
+            clean_text,
+        )
+        pub_date_str = pub_date_match.group(1).strip() if pub_date_match else None
+
         # Detect apply link
-        apply_url_match = re.search(r'https?://[^\s<"]+apply[^\s<"]*', raw_text, re.IGNORECASE)
+        apply_url_match = re.search(r'https?://[^\s<"]+(?:apply|register|portal|form)[^\s<"]*', raw_text, re.IGNORECASE)
         app_url = apply_url_match.group(0) if apply_url_match else source_url
+
+        # Extract eligibility bullet points if present
+        eligibility = []
+        elig_match = re.findall(r"(?i)(?:eligibility|qualification|criteria):\s*([^\n\.]+)", clean_text)
+        if elig_match:
+            eligibility = [e.strip() for e in elig_match[:3] if len(e.strip()) > 5]
+        if not eligibility:
+            eligibility = ["As per official notification guidelines"]
 
         return OpportunityExtractionSchema(
             title=title[:255],
@@ -133,6 +161,9 @@ class OpportunityExtractor:
             summary=clean_text[:300] if clean_text else None,
             source_url=source_url,
             application_url=app_url,
+            published_at=pub_date_str,
+            application_open_date=open_date_str,
             application_deadline=deadline_str,
-            eligibility=["As per official notification guidelines"],
+            eligibility=eligibility,
         )
+

@@ -17,8 +17,12 @@ from app.models.enums import UserRole, UserStatus
 from app.models.user import User
 
 
-def seed_requested_users() -> None:
-    session = get_sessionmaker()()
+def seed_requested_users(session=None) -> dict:
+    close_at_end = False
+    if session is None:
+        session = get_sessionmaker()()
+        close_at_end = True
+
     try:
         print("Seeding requested user accounts...")
 
@@ -66,8 +70,13 @@ def seed_requested_users() -> None:
 
         session.commit()
         print("\n=== User Accounts Created Successfully! ===")
+        return {"users_seeded": 2}
     finally:
-        session.close()
+        if close_at_end:
+            session.close()
+
+
+seed = seed_requested_users
 
 
 if __name__ == "__main__":

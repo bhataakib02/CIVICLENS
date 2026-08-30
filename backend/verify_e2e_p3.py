@@ -54,13 +54,13 @@ def main() -> int:
         get_settings.cache_clear()
         sess.reset_engine()
 
-        # Seed schemes then knowledge (knowledge links to schemes).
-        from app.seeds.seed_demo import seed as seed_schemes
+        # Seed real user accounts then knowledge base.
+        from app.seeds.seed_requested_users import seed as seed_users
         from app.seeds.seed_knowledge import seed as seed_knowledge
 
         s = sess.get_sessionmaker()()
         try:
-            sch = seed_schemes(s)
+            usr = seed_users(s)
             kn = seed_knowledge(s)
         finally:
             s.close()

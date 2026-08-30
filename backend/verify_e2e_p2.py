@@ -58,8 +58,8 @@ def main() -> int:
         get_settings.cache_clear()
         sess.reset_engine()
 
-        # Seed demo data.
-        from app.seeds.seed_demo import seed
+        # Seed real user accounts.
+        from app.seeds.seed_requested_users import seed
 
         s = sess.get_sessionmaker()()
         try:

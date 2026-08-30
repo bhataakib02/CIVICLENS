@@ -24,7 +24,7 @@ from app.modules.opportunities.ingestion.date_extractor import DateClassifier
 from app.modules.opportunities.ingestion.link_validator import LinkValidator
 from app.modules.opportunities.ingestion.deduplicator import compute_content_hash, DeduplicationEngine
 from app.modules.opportunities.ingestion.quality import QualityScorer
-from app.modules.opportunities.ingestion.connectors.base import HTMLConnector, RSSConnector, JSONConnector
+from app.modules.opportunities.ingestion.connectors.base import HTMLConnector, RSSConnector, JSONConnector, get_connector_for_source
 
 
 class OpportunityService:
@@ -204,12 +204,15 @@ class OpportunityService:
 
     def crawl_source(self, source_id: uuid.UUID) -> Dict[str, Any]:
         import time
-        from datetime import datetime, timezone
-        from app.models.opportunity import CrawlRun
+        from datetime import datetime, timezone, timedelta
+        from app.models.opportunity import CrawlRun, RawCrawlSnapshot, OpportunityVersion, OpportunityChange
         from app.core.metrics import metrics
         from app.models.enums import DomainEventType
         from app.modules.notifications.events import AggregateType
         from app.modules.notifications.service import OutboxWriter
+        from app.modules.opportunities.ingestion.connectors.base import get_connector_for_source
+        from app.modules.opportunities.ingestion.robots import RobotsPolicyChecker
+        from app.modules.opportunities.ingestion.rate_limiter import DomainRateLimiter
 
         start_time = time.time()
         metrics.incr("opportunity_crawl_runs_total")
@@ -219,16 +222,38 @@ class OpportunityService:
             metrics.incr("opportunity_crawl_failures_total")
             return {"status": "FAILED", "error": "Source not found"}
 
+        now_utc = datetime.now(timezone.utc)
+        source.last_crawl_started_at = now_utc
+
         run = CrawlRun(
             source_id=source.id,
             status="RUNNING",
-            started_at=datetime.now(timezone.utc),
+            started_at=now_utc,
         )
         self.session.add(run)
         self.session.commit()
 
+        # Enforce rate limits & robots.txt compliance (prompt §8, §9)
+        DomainRateLimiter().acquire(source.domain)
+        robots_checker = RobotsPolicyChecker()
+        if not robots_checker.is_allowed(source.base_url):
+            run.status = "FAILED"
+            run.error_summary = "Disallowed by robots.txt policy"
+            run.completed_at = datetime.now(timezone.utc)
+
+            source.health_status = "BLOCKED"
+            source.consecutive_failures = (source.consecutive_failures or 0) + 1
+            source.last_error = "Disallowed by robots.txt policy"
+            source.last_error_at = datetime.now(timezone.utc)
+            source.last_failed_at = datetime.now(timezone.utc)
+            self.session.commit()
+
+            metrics.incr("opportunity_crawl_failures_total")
+            return {"status": "FAILED", "error": "Disallowed by robots.txt policy", "source": source.name}
+
         extractor = OpportunityExtractor()
-        connector = HTMLConnector()
+        source_type_str = source.source_type.value if hasattr(source.source_type, "value") else str(source.source_type)
+        connector = get_connector_for_source(source.crawl_policy, source_type_str, source.base_url)
         dedup_engine = DeduplicationEngine(self.session)
         link_validator = LinkValidator()
 
@@ -236,40 +261,105 @@ class OpportunityService:
         updated = 0
         duplicates = 0
 
+        from app.modules.opportunities.ingestion.adapters.registry import get_adapter_for_domain
+        adapter = get_adapter_for_domain(source.domain)
+
         try:
             docs = connector.fetch_items(source.base_url)
             run.pages_fetched = len(docs)
 
             for doc in docs:
-                extracted = extractor.extract(doc.content, doc.url, default_org=source.name)
-                content_hash = compute_content_hash(extracted.organization, extracted.title, extracted.application_deadline)
+                if adapter:
+                    extracted_items = adapter.parse_opportunities(doc.content, doc.url)
+                else:
+                    extracted_items = [extractor.extract(doc.content, doc.url, default_org=source.name)]
 
-                # Store raw content snapshot with retention policy (prompt amendment §2)
-                from datetime import timedelta
-                from app.models.opportunity import RawCrawlSnapshot
-                snapshot = RawCrawlSnapshot(
-                    source_id=source.id,
-                    url=doc.url,
-                    content_hash=content_hash,
-                    content_type=doc.content_type,
-                    size_bytes=len(doc.content.encode("utf-8")),
-                    raw_content=doc.content[:50000],  # snapshot limit
-                    retrieved_at=datetime.now(timezone.utc),
-                    expires_at=datetime.now(timezone.utc) + timedelta(days=30),  # 30-day retention
-                )
-                self.session.add(snapshot)
+                for extracted in extracted_items:
+                    content_hash = compute_content_hash(extracted.organization, extracted.title, extracted.application_deadline)
 
-                existing = dedup_engine.find_duplicate(content_hash, source_identifier=doc.source_identifier)
+                    # Store raw content snapshot with 30-day retention cutoff (prompt §10)
+                    clean_content = doc.content.replace("\x00", "")
+                    snapshot = RawCrawlSnapshot(
+                        source_id=source.id,
+                        url=doc.url,
+                        content_hash=content_hash,
+                        content_type=doc.content_type,
+                        size_bytes=len(clean_content.encode("utf-8")),
+                        raw_content=clean_content[:50000],  # snapshot limit
+                        retrieved_at=datetime.now(timezone.utc),
+                        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+                    )
+                    self.session.add(snapshot)
+
+                existing = dedup_engine.find_duplicate(content_hash, source_identifier=doc.source_identifier, organization=extracted.organization, title=extracted.title)
+
+                parsed_deadline = DateClassifier.parse_datetime(extracted.application_deadline)
+                parsed_open_date = DateClassifier.parse_datetime(extracted.application_open_date)
+                parsed_pub_date = DateClassifier.parse_datetime(extracted.published_at)
 
                 if existing:
                     duplicates += 1
-                    # Check if canonical upgrade needed
+                    existing.last_seen_at = datetime.now(timezone.utc)
+                    existing.last_verified_at = datetime.now(timezone.utc)
+
+                    # Versioning & Change detection (prompt §21, §53)
+                    diffs = {}
+                    if parsed_deadline and existing.application_deadline != parsed_deadline:
+                        diffs["application_deadline"] = {
+                            "old": existing.application_deadline.isoformat() if existing.application_deadline else None,
+                            "new": parsed_deadline.isoformat(),
+                        }
+                        self.session.add(
+                            OpportunityChange(
+                                opportunity_id=existing.id,
+                                change_type="DEADLINE_CHANGED",
+                                old_value=existing.application_deadline.isoformat() if existing.application_deadline else None,
+                                new_value=parsed_deadline.isoformat(),
+                            )
+                        )
+                        existing.application_deadline = parsed_deadline
+
+                    if extracted.application_url and existing.application_url != extracted.application_url:
+                        diffs["application_url"] = {"old": existing.application_url, "new": extracted.application_url}
+                        self.session.add(
+                            OpportunityChange(
+                                opportunity_id=existing.id,
+                                change_type="APPLY_LINK_CHANGED",
+                                old_value=existing.application_url,
+                                new_value=extracted.application_url,
+                            )
+                        )
+                        existing.application_url = extracted.application_url
+
+                    if diffs:
+                        updated += 1
+                        latest_ver_num = (
+                            self.session.query(OpportunityVersion.version_number)
+                            .filter(OpportunityVersion.opportunity_id == existing.id)
+                            .order_by(OpportunityVersion.version_number.desc())
+                            .first()
+                        )
+                        next_ver = (latest_ver_num[0] + 1) if latest_ver_num else 2
+                        self.session.add(
+                            OpportunityVersion(
+                                opportunity_id=existing.id,
+                                version_number=next_ver,
+                                payload={"title": existing.title, "organization": existing.organization, "application_deadline": parsed_deadline.isoformat() if parsed_deadline else None},
+                                diff=diffs,
+                            )
+                        )
+
+                    # Canonical authority escalation check
                     if dedup_engine.select_canonical(existing, source.authority_level):
                         existing.is_canonical = True
-                        self.session.commit()
+
+                    self.session.commit()
                     continue
 
                 opp_type = OpportunityType[extracted.type] if extracted.type in OpportunityType.__members__ else OpportunityType.JOB
+
+                # Validate application link (prompt §18, §52)
+                app_link_res = link_validator.validate_link(extracted.application_url or doc.url, source.domain)
 
                 # Calculate tiered quality score (0.85 for official government/scheme vs 0.75 for private)
                 score, decision = QualityScorer.calculate_quality_score(
@@ -278,8 +368,14 @@ class OpportunityService:
                     has_org=bool(extracted.organization),
                     has_deadline=bool(extracted.application_deadline),
                     has_eligibility=bool(extracted.eligibility),
-                    has_application_url=bool(extracted.application_url),
+                    has_application_url=bool(app_link_res.is_valid),
+                    extraction_confidence=1.0,
                     opp_type=opp_type,
+                )
+
+                deadline_status = DateClassifier.calculate_status(
+                    open_date=parsed_open_date,
+                    deadline=parsed_deadline,
                 )
 
                 opp_create = OpportunityCreate(
@@ -289,17 +385,22 @@ class OpportunityService:
                     description=extracted.description,
                     summary=extracted.summary,
                     source_url=doc.url,
-                    application_url=extracted.application_url or doc.url,
+                    application_url=app_link_res.url,
                     source_domain=source.domain,
                     source_name=source.name,
-                    source_type=source.source_type.value,
+                    source_type=source.source_type.value if hasattr(source.source_type, "value") else str(source.source_type),
                     source_identifier=doc.source_identifier,
                     source_id=source.id,
                     eligibility=extracted.eligibility,
-                    status=OpportunityDeadlineStatus.OPEN if extracted.application_deadline else OpportunityDeadlineStatus.DATE_UNKNOWN,
+                    application_open_date=parsed_open_date,
+                    application_deadline=parsed_deadline,
+                    published_at=parsed_pub_date or datetime.now(timezone.utc),
+                    status=deadline_status,
                 )
                 opp = self.repo.create_opportunity(opp_create, content_hash)
                 opp.quality_score = score
+                opp.last_seen_at = datetime.now(timezone.utc)
+                opp.last_verified_at = datetime.now(timezone.utc)
                 self.session.commit()
                 discovered += 1
 
@@ -324,9 +425,20 @@ class OpportunityService:
             run.status = "COMPLETED"
             run.pages_changed = discovered
             run.opportunities_found = discovered
+            run.opportunities_updated = updated
             run.duplicates_detected = duplicates
             run.duration_ms = duration_sec * 1000.0
             run.completed_at = datetime.now(timezone.utc)
+            run.failure_stage = "CRAWL_SUCCESS_ZERO_OPPORTUNITIES" if (discovered == 0 and duplicates == 0) else "NONE"
+
+            # Update Source Health Metrics (prompt §24, §54)
+            source.health_status = "HEALTHY"
+            source.consecutive_failures = 0
+            source.last_failure_stage = run.failure_stage
+            source.last_crawl_completed_at = datetime.now(timezone.utc)
+            source.last_crawled_at = datetime.now(timezone.utc)
+            source.last_successful_crawl_at = datetime.now(timezone.utc)
+            source.last_error = None
             self.session.commit()
 
             metrics.incr("opportunity_discovered_total", discovered)
@@ -335,20 +447,44 @@ class OpportunityService:
             return {
                 "status": "COMPLETED",
                 "discovered": discovered,
+                "updated": updated,
                 "duplicates": duplicates,
+                "failure_stage": run.failure_stage,
                 "source": source.name,
             }
 
         except Exception as exc:
+            self.session.rollback()
             duration_sec = time.time() - start_time
-            run.status = "FAILED"
-            run.error_summary = str(exc)[:500]
-            run.duration_ms = duration_sec * 1000.0
-            run.completed_at = datetime.now(timezone.utc)
-            self.session.commit()
+
+            # Determine failure stage from exception
+            exc_str = str(exc).lower()
+            if "dns" in exc_str or "getaddrinfo" in exc_str:
+                stage = "DNS_FAILED"
+            elif "timeout" in exc_str:
+                stage = "TIMEOUT"
+            elif "robots" in exc_str:
+                stage = "ROBOTS_BLOCKED"
+            elif "http" in exc_str or "40" in exc_str or "50" in exc_str:
+                stage = "HTTP_ERROR"
+            elif "extract" in exc_str or "parse" in exc_str:
+                stage = "EXTRACTION_FAILED"
+            else:
+                stage = "HTTP_ERROR"
+
+            source_rec = self.repo.get_source(source_id)
+            if source_rec:
+                source_rec.consecutive_failures = (source_rec.consecutive_failures or 0) + 1
+                source_rec.health_status = "STALE" if source_rec.consecutive_failures >= 3 else "DEGRADED"
+                source_rec.last_failure_stage = stage
+                source_rec.last_failed_at = datetime.now(timezone.utc)
+                source_rec.last_error_at = datetime.now(timezone.utc)
+                source_rec.last_error = str(exc)[:500]
+                self.session.commit()
 
             metrics.incr("opportunity_crawl_failures_total")
             metrics.observe("opportunity_crawl_duration_seconds", duration_sec)
-            return {"status": "FAILED", "error": str(exc), "source": source.name}
+            return {"status": "FAILED", "error": str(exc), "failure_stage": stage, "source": source.name if source else "Unknown"}
+
 
 

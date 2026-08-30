@@ -30,6 +30,19 @@ def list_admin_sources(
     return service.list_sources()
 
 
+@admin_opportunities_router.post("/opportunity-sources/validate")
+def validate_admin_source(
+    url: str = Query(..., description="Target candidate source URL"),
+    domain: Optional[str] = Query(None, description="Optional target domain"),
+    current_admin: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Admin: Run pre-enablement validation checks (DNS, HTTPS, robots.txt, connector test)."""
+    from app.modules.opportunities.ingestion.validator import SourceValidator
+    validator = SourceValidator()
+    res = validator.validate_source(url, domain=domain)
+    return res.__dict__
+
+
 @admin_opportunities_router.post("/opportunity-sources", response_model=OpportunitySourceResponse, status_code=status.HTTP_201_CREATED)
 def create_admin_source(
     data: OpportunitySourceCreate,

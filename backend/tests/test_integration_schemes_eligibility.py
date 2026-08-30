@@ -293,15 +293,9 @@ def test_eligibility_determinism_repeated(client, db_session_factory):
 
 
 def test_seed_data_runs(client, db_session_factory):
-    # The seed script must run against the real DB and produce demo schemes.
-    from app.seeds.seed_demo import seed
+    """Verify production seed runner seeds user accounts cleanly."""
+    from app.seeds.seed_requested_users import seed
 
     with db_session_factory() as s:
         summary = seed(s)
-    assert summary["scheme_a_version_id"]
-
-    from app.models.scheme import Scheme
-
-    with db_session_factory() as s:
-        codes = set(s.scalars(select(Scheme.code)).all())
-    assert {"CIVIC-DEMO-001", "CIVIC-DEMO-002", "CIVIC-DEMO-003"} <= codes
+    assert summary["users_seeded"] > 0

@@ -143,33 +143,54 @@ class SafeFetcher:
         current = url
         for _hop in range(max_redirects + 1):
             _validate_url(current, allow_private=allow_private)
-            with httpx.Client(
-                follow_redirects=False,
-                timeout=self._s.fetch_timeout_seconds,
-                headers={"User-Agent": "CivicLens-Ingestion/1.0"},
-            ) as client:
-                with client.stream("GET", current) as resp:
-                    if resp.is_redirect:
-                        location = resp.headers.get("location")
-                        if not location:
-                            raise FetchError("Redirect without Location header.")
-                        current = str(httpx.URL(current).join(location))
-                        continue
-                    resp.raise_for_status()
-                    content_type = resp.headers.get("content-type", "").split(";")[0].strip().lower()
-                    if content_type and not any(
-                        content_type == ct for ct in _ALLOWED_CONTENT_TYPES
-                    ):
-                        raise ContentTypeError(f"Disallowed content-type '{content_type}'.")
-                    body = self._read_capped(resp)
-                    return FetchResult(
-                        url=url,
-                        final_url=current,
-                        status_code=resp.status_code,
-                        content_type=content_type or "application/octet-stream",
-                        content=body,
-                        retrieved_at=time.time(),
-                    )
+            try:
+                with httpx.Client(
+                    follow_redirects=False,
+                    timeout=self._s.fetch_timeout_seconds,
+                    headers={"User-Agent": "CivicLens-Ingestion/1.0"},
+                ) as client:
+                    with client.stream("GET", current) as resp:
+                        if resp.is_redirect:
+                            location = resp.headers.get("location")
+                            if not location:
+                                raise FetchError("Redirect without Location header.")
+                            current = str(httpx.URL(current).join(location))
+                            continue
+                        resp.raise_for_status()
+                        content_type = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+                        if content_type and not any(
+                            content_type == ct for ct in _ALLOWED_CONTENT_TYPES
+                        ):
+                            raise ContentTypeError(f"Disallowed content-type '{content_type}'.")
+                        body = self._read_capped(resp)
+                        return FetchResult(
+                            url=url,
+                            final_url=str(resp.url),
+                            status_code=resp.status_code,
+                            content_type=content_type or "application/octet-stream",
+                            content=body,
+                            retrieved_at=time.time(),
+                        )
+            except httpx.RemoteProtocolError:
+                import urllib.request
+                try:
+                    req = urllib.request.Request(current, headers={"User-Agent": "CivicLens-Ingestion/1.0"})
+                    with urllib.request.urlopen(req, timeout=self._s.fetch_timeout_seconds) as ures:
+                        body_bytes = ures.read(self._s.fetch_max_bytes + 1)
+                        if len(body_bytes) > self._s.fetch_max_bytes:
+                            raise ResponseTooLargeError("Response exceeds cap.")
+                        headers = dict(ures.headers)
+                        ct = headers.get("Content-Type", "text/html").split(";")[0].strip().lower()
+                        return FetchResult(
+                            url=url,
+                            final_url=ures.geturl(),
+                            content=body_bytes,
+                            content_type=ct or "text/html",
+                            status_code=ures.status,
+                            retrieved_at=time.time(),
+                        )
+                except Exception as exc:
+                    raise FetchError(f"Urllib fallback failed: {exc}") from exc
         raise FetchError("Too many redirects.")
 
     def _read_capped(self, resp: httpx.Response) -> bytes:

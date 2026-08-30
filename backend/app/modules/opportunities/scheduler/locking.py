@@ -58,9 +58,10 @@ class DistributedCrawlLock:
                         '{lease}',
                         (:lease_json)::jsonb
                     )
-                    WHERE id = :source_id
+                    WHERE id = (:source_id)::uuid
                     AND (
                         (crawl_policy->'lease'->>'expires_at') IS NULL
+                        OR (crawl_policy->'lease'->>'expires_at') = ''
                         OR (crawl_policy->'lease'->>'expires_at')::float < :now_ts
                     )
                     RETURNING id
@@ -109,7 +110,7 @@ class DistributedCrawlLock:
                     """
                     UPDATE opportunity_sources
                     SET crawl_policy = crawl_policy - 'lease'
-                    WHERE id = :source_id
+                    WHERE id = (:source_id)::uuid
                     AND (crawl_policy->'lease'->>'token') = :token
                     """
                 ),

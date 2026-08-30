@@ -5,7 +5,7 @@ Enforces robots.txt guidelines and TOS boundaries without stealth scraping.
 from __future__ import annotations
 
 from urllib.parse import urlparse
-import robotparser
+from urllib.robotparser import RobotFileParser
 
 from app.core.logging import get_logger
 
@@ -17,7 +17,7 @@ class RobotsPolicyChecker:
 
     def __init__(self, user_agent: str = "CivicLens-OpportunityCrawler/1.0") -> None:
         self.user_agent = user_agent
-        self._parsers: dict[str, robotparser.RobotFileParser] = {}
+        self._parsers: dict[str, RobotFileParser] = {}
 
     def is_allowed(self, url: str, robots_txt_content: str | None = None) -> bool:
         """Check if a target URL is allowed under the domain's robots.txt rules."""
@@ -28,7 +28,7 @@ class RobotsPolicyChecker:
 
         parser = self._parsers.get(domain)
         if not parser:
-            parser = robotparser.RobotFileParser()
+            parser = RobotFileParser()
             if robots_txt_content:
                 parser.parse(robots_txt_content.splitlines())
             else:
@@ -46,3 +46,4 @@ class RobotsPolicyChecker:
         if not allowed:
             logger.info("robots_disallowed", extra={"url": url, "user_agent": self.user_agent})
         return allowed
+

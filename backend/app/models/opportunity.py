@@ -61,6 +61,11 @@ class OpportunitySource(Base):
     crawl_frequency = Column(String(50), nullable=False, default="daily")  # hourly, 6h, daily
     enabled = Column(Boolean, nullable=False, default=True)
 
+    priority = Column(String(10), nullable=False, default="P1", index=True)  # P0, P1, P2, P3
+    district = Column(String(100), nullable=True)
+    geographic_scope = Column(String(50), nullable=False, default="NATIONAL")  # NATIONAL, STATE, DISTRICT, CITY, REMOTE
+    last_failure_stage = Column(String(50), nullable=True)  # DNS_FAILED, HTTP_ERROR, ROBOTS_BLOCKED, TIMEOUT, PARSER_FAILED, EXTRACTION_FAILED, VALIDATION_FAILED, CRAWL_SUCCESS_ZERO_OPPORTUNITIES, NONE
+
     # Source Health Metrics (Prompt Amendment §8)
     health_status = Column(String(50), nullable=False, default="HEALTHY")  # HEALTHY, STALE, DEGRADED, BLOCKED, DISABLED
     consecutive_failures = Column(Integer, nullable=False, default=0)
@@ -101,6 +106,9 @@ class Opportunity(Base):
     category = Column(String(100), nullable=True, index=True)
     sector = Column(String(100), nullable=True, index=True)
     skills = Column(JSONB, nullable=False, default=list)
+
+    district = Column(String(100), nullable=True)
+    geographic_scope = Column(String(50), nullable=False, default="NATIONAL")
 
     # Criteria JSON specs
     education_requirements = Column(JSONB, nullable=False, default=list)
@@ -299,6 +307,7 @@ class CrawlRun(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id = Column(UUID(as_uuid=True), ForeignKey("opportunity_sources.id", ondelete="CASCADE"), nullable=False, index=True)
     status = Column(String(50), nullable=False, default="RUNNING")  # RUNNING, COMPLETED, FAILED
+    failure_stage = Column(String(50), nullable=True)  # DNS_FAILED, HTTP_ERROR, ROBOTS_BLOCKED, TIMEOUT, PARSER_FAILED, EXTRACTION_FAILED, VALIDATION_FAILED, CRAWL_SUCCESS_ZERO_OPPORTUNITIES, NONE
     pages_fetched = Column(Integer, nullable=False, default=0)
     pages_changed = Column(Integer, nullable=False, default=0)
     pages_skipped = Column(Integer, nullable=False, default=0)

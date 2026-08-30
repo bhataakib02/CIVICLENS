@@ -35,12 +35,32 @@ class BaseOpportunityConnector(abc.ABC):
 
 
 class HTMLConnector(BaseOpportunityConnector):
-    """HTML page fetcher for direct web pages."""
+    """HTML page fetcher for direct web pages with candidate link discovery (prompt §7, §11)."""
+
+    OPPORTUNITY_PATH_PATTERNS = [
+        r"/jobs?",
+        r"/careers?",
+        r"/recruitments?",
+        r"/vacanc(?:y|ies)",
+        r"/notifications?",
+        r"/scholarships?",
+        r"/internships?",
+        r"/apprenticeships?",
+        r"/fellowships?",
+        r"/schemes?",
+        r"/benefits?",
+        r"/grants?",
+        r"/trainings?",
+        r"/admissions?",
+    ]
 
     def fetch_items(self, base_url: str) -> List[RawOpportunityDocument]:
+        import re
+        from urllib.parse import urljoin, urlparse
+
         res: FetchResult = self.fetcher.fetch(base_url)
         content_str = res.content.decode("utf-8", errors="ignore")
-        return [
+        docs = [
             RawOpportunityDocument(
                 url=res.final_url,
                 content=content_str,
@@ -49,6 +69,40 @@ class HTMLConnector(BaseOpportunityConnector):
                 retrieved_at=res.retrieved_at,
             )
         ]
+
+        # Candidate subpage link discovery
+        base_domain = urlparse(res.final_url).hostname or ""
+        hrefs = re.findall(r'href=["\']([^"\']+)["\']', content_str, re.IGNORECASE)
+        candidate_urls = []
+        for href in hrefs:
+            abs_url = urljoin(res.final_url, href)
+            parsed = urlparse(abs_url)
+            if parsed.hostname == base_domain:
+                path = parsed.path.lower()
+                for pat in self.OPPORTUNITY_PATH_PATTERNS:
+                    if re.search(pat, path):
+                        if abs_url not in candidate_urls and abs_url != res.final_url:
+                            candidate_urls.append(abs_url)
+                        break
+
+        # Limit candidate crawl pass to top 5 discovered links per pass
+        for cand_url in candidate_urls[:5]:
+            try:
+                sub_res = self.fetcher.fetch(cand_url)
+                sub_content = sub_res.content.decode("utf-8", errors="ignore")
+                docs.append(
+                    RawOpportunityDocument(
+                        url=sub_res.final_url,
+                        content=sub_content,
+                        content_type=sub_res.content_type,
+                        source_identifier=sub_res.final_url,
+                        retrieved_at=sub_res.retrieved_at,
+                    )
+                )
+            except Exception:
+                continue
+
+        return docs
 
 
 class RSSConnector(BaseOpportunityConnector):
@@ -123,7 +177,15 @@ class SitemapConnector(BaseOpportunityConnector):
                 )
             except Exception:
                 continue
-        return documents
+        return documents if documents else [
+            RawOpportunityDocument(
+                url=res.final_url,
+                content=content_str,
+                content_type=res.content_type,
+                source_identifier=res.final_url,
+                retrieved_at=res.retrieved_at,
+            )
+        ]
 
 
 class JSONConnector(BaseOpportunityConnector):
@@ -168,12 +230,34 @@ class APIConnector(JSONConnector):
 
 
 class PDFConnector(BaseOpportunityConnector):
-    """PDF Document connector."""
+    """PDF Document connector with text extraction (prompt §12)."""
 
     def fetch_items(self, base_url: str) -> List[RawOpportunityDocument]:
         res = self.fetcher.fetch(base_url)
-        # Store PDF metadata / string snippet
-        content_str = f"PDF Document retrieved from {base_url} (size: {len(res.content)} bytes)"
+        extracted_text = ""
+
+        try:
+            import io
+            import pypdf
+
+            reader = pypdf.PdfReader(io.BytesIO(res.content))
+            pages_text = []
+            for page in reader.pages:
+                txt = page.extract_text()
+                if txt:
+                    pages_text.append(txt)
+            extracted_text = "\n".join(pages_text)
+        except Exception:
+            pass
+
+        if not extracted_text:
+            import re
+
+            decoded = res.content.decode("latin-1", errors="ignore")
+            # Strip non-printable binary bytes
+            extracted_text = re.sub(r"[^\x20-\x7E\n\r\t]", " ", decoded)
+
+        content_str = extracted_text.strip() or f"PDF Document retrieved from {base_url} (size: {len(res.content)} bytes)"
         return [
             RawOpportunityDocument(
                 url=res.final_url,
@@ -183,3 +267,26 @@ class PDFConnector(BaseOpportunityConnector):
                 retrieved_at=res.retrieved_at,
             )
         ]
+
+
+def get_connector_for_source(
+    crawl_policy: dict | None = None,
+    source_type: str | None = None,
+    base_url: str = "",
+    fetcher: SafeFetcher | None = None,
+) -> BaseOpportunityConnector:
+    """Factory function for selecting the appropriate connector instance (prompt §6)."""
+    crawl_policy = crawl_policy or {}
+    conn_type = (crawl_policy.get("connector_type") or "").upper()
+    url_lower = base_url.lower()
+
+    if conn_type == "RSS" or "feed" in url_lower or "rss" in url_lower or url_lower.endswith(".xml"):
+        return RSSConnector(fetcher=fetcher)
+    elif conn_type == "SITEMAP" or "sitemap" in url_lower:
+        return SitemapConnector(fetcher=fetcher)
+    elif conn_type == "JSON" or conn_type == "API" or url_lower.endswith(".json"):
+        return JSONConnector(fetcher=fetcher)
+    elif conn_type == "PDF" or url_lower.endswith(".pdf"):
+        return PDFConnector(fetcher=fetcher)
+    return HTMLConnector(fetcher=fetcher)
+
