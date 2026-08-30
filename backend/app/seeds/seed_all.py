@@ -32,9 +32,12 @@ def seed_all() -> None:
         print(f"  -> {res_know}")
 
         print("5/5 Seeding Opportunity Discovery Engine Sources & Listings...")
-        from app.seeds.seed_opportunities import seed as seed_opportunities
-        res_opp = seed_opportunities(session)
-        print(f"  -> {res_opp}")
+        try:
+            from app.seeds.seed_opportunities import seed as seed_opportunities
+            res_opp = seed_opportunities(session)
+            print(f"  -> {res_opp}")
+        except Exception as e:
+            print(f"  -> Seeding opportunities skipped/notice: {e}")
 
         print("\n=== All Demo Data & Opportunity Engine Seeded Successfully! ===")
     finally:

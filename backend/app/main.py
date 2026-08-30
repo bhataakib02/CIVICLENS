@@ -199,8 +199,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     from app.modules.opportunities.router import opportunities_router
     from app.modules.opportunities.admin_router import admin_opportunities_router
+    from app.modules.locations.router import locations_router
     app.include_router(opportunities_router, prefix=API_PREFIX)
     app.include_router(admin_opportunities_router, prefix=API_PREFIX)
+    app.include_router(locations_router, prefix=API_PREFIX)
 
     return app
 

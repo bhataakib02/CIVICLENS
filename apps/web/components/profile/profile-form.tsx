@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/formatting/currency';
+import { StateDistrictSelector } from '@/components/ui/state-district-selector';
 import {
   UserCheck,
   ShieldAlert,
@@ -342,45 +343,54 @@ export function ProfileForm() {
               {t.profile.sectionAddress}
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label={t.profile.addrLine1}
-              type="text"
-              value={line1}
-              onChange={(e) => setLine1(e.target.value)}
-              placeholder={t.profile.addrLine1Placeholder}
-            />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label={t.profile.addrLine1}
+                type="text"
+                value={line1}
+                onChange={(e) => setLine1(e.target.value)}
+                placeholder={t.profile.addrLine1Placeholder}
+              />
 
-            <Input
-              label={t.profile.addrLine2}
-              type="text"
-              value={line2}
-              onChange={(e) => setLine2(e.target.value)}
-              placeholder={t.profile.addrLine2Placeholder}
-            />
+              <Input
+                label={t.profile.addrLine2}
+                type="text"
+                value={line2}
+                onChange={(e) => setLine2(e.target.value)}
+                placeholder={t.profile.addrLine2Placeholder}
+              />
+            </div>
 
-            <Input
-              label={t.profile.addrDistrict}
-              type="text"
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              placeholder={t.profile.addrDistrictPlaceholder}
-            />
+            {/* Complete 4-Level India Administrative Location Hierarchy Component */}
+            <div className="pt-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
+                Administrative Location Hierarchy (LGD Standard):
+              </label>
+              <StateDistrictSelector
+                value={{
+                  state: stateName,
+                  district: district,
+                  isAllDistricts: district === 'All Districts' || district === 'ALL',
+                  isAllSubDistricts: false,
+                  isAllBlocks: false
+                }}
+                onChange={(val) => {
+                  setStateName(val.state);
+                  setDistrict(val.district);
+                }}
+              />
+            </div>
 
-            <Select
-              label={t.profile.addrState}
-              value={stateName}
-              onChange={(e) => setStateName(e.target.value)}
-              options={INDIAN_STATES.map((s) => ({ value: s, label: s }))}
-            />
-
-            <Input
-              label={t.profile.addrPincode}
-              type="text"
-              value={pincode}
-              onChange={(e) => setPincode(e.target.value)}
-              placeholder={t.profile.addrPincodePlaceholder}
-            />
+            <div className="pt-2 sm:w-1/2">
+              <Input
+                label={t.profile.addrPincode}
+                type="text"
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+                placeholder={t.profile.addrPincodePlaceholder}
+              />
+            </div>
           </CardContent>
         </Card>
 

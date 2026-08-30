@@ -1,0 +1,75 @@
+================================================================
+  CIVICLENS — LOCAL DEVELOPMENT START COMMANDS
+================================================================
+
+  *** EASIEST: ONE COMMAND TO START EVERYTHING ***
+
+  cd d:\CIVICLENS
+  .\start-dev.ps1
+
+  Opens 3 windows automatically:
+    - Backend (Docker)         →  http://localhost:8000
+    - Citizen Frontend         →  http://localhost:3000
+    - Admin Panel              →  http://localhost:3001
+
+================================================================
+
+MANUAL (if you prefer separate terminals):
+
+STEP 1: Start Backend (Terminal 1)
+------------------------------------
+cd d:\CIVICLENS
+docker compose up postgres redis api worker migration
+
+  Runs: Database, Cache, API (localhost:8000), Worker
+  API Docs: http://localhost:8000/docs
+
+
+STEP 2: Start Frontend (Terminal 2)
+------------------------------------
+cd d:\CIVICLENS\apps\web
+npm run dev
+
+  Opens at: http://localhost:3000
+  Hot-reload: YES — every file save reflects instantly in browser
+
+
+OPTIONAL: Start Admin Panel (Terminal 3)
+------------------------------------
+cd d:\CIVICLENS\apps\admin
+npm run dev
+
+  Opens at: http://localhost:3001
+
+
+================================================================
+  TO STOP EVERYTHING
+================================================================
+
+1. Ctrl+C in each frontend terminal
+
+2. In the Docker terminal:
+   Ctrl+C
+   docker compose down
+
+
+================================================================
+  QUICK REFERENCE
+================================================================
+
+  Frontend (citizen)  →  http://localhost:3000
+  Admin Panel         →  http://localhost:3001
+  Backend API         →  http://localhost:8000
+  API Docs (Swagger)  →  http://localhost:8000/docs
+  PostgreSQL          →  localhost:5432
+  Redis               →  localhost:6379
+
+================================================================
+  IMPORTANT NOTE
+================================================================
+
+  Do NOT use "docker compose up" for the web/admin containers.
+  They run a frozen production build with no hot-reload.
+  Always run the frontend locally with "npm run dev".
+
+================================================================
