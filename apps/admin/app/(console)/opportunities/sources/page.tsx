@@ -52,7 +52,7 @@ export default function SourceRegistryPage() {
         source_type: sourceType,
         authority_level: authorityLevel,
         crawl_frequency: crawlFrequency,
-        enabled: True as any,
+        enabled: true,
       });
       setShowAddModal(false);
       setName('');

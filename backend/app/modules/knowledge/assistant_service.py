@@ -68,6 +68,20 @@ class AssistantService:
     ) -> dict:
         logger.info("assistant_query_started", extra={"has_scheme": scheme_id is not None})
 
+        # 0. Handle simple conversational greetings gracefully
+        clean_query = query.strip().lower()
+        if clean_query in ("hi", "hello", "hey", "hii", "hiii", "namaste", "good morning", "good afternoon", "good evening"):
+            return {
+                "conversation_id": str(conversation_id or uuid.uuid4()),
+                "answer": "Hello! I am CivicLens Assistant. How can I help you today? You can ask me about government schemes, eligibility rules, required documents, or how to apply.",
+                "citations": [],
+                "scheme_ids": [],
+                "eligibility_tool_calls": [],
+                "missing_information": [],
+                "confidence": 1.0,
+                "grounded": True,
+            }
+
         # 1. Deterministic fact extraction (assistive parsing, not decisions).
         facts = self._extract_facts(query)
 

@@ -66,6 +66,21 @@ class CitizenProfile(Base):
         back_populates="profile", cascade="all, delete-orphan"
     )
 
+    @property
+    def profile_completeness(self) -> float:
+        fields = (
+            "date_of_birth",
+            "gender",
+            "category",
+            "occupation",
+            "declared_annual_income",
+            "disability_status",
+            "family_size",
+        )
+        filled = sum(1 for f in fields if getattr(self, f) not in (None, ""))
+        return round(filled / len(fields), 4)
+
+
 
 class CitizenProfileVersion(Base):
     __tablename__ = "citizen_profile_versions"
