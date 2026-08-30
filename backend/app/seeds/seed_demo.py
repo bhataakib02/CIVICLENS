@@ -62,13 +62,19 @@ SCHEME_C_RULES = [
 
 
 def _upsert_scheme(
-    session: Session, *, code: str, name: str, category: str, scope: SchemeScope, rules: list
+    session: Session, *, code: str, name: str, category: str, scope: SchemeScope, rules: list, summary: str | None = None
 ) -> SchemeVersion:
     scheme = session.scalar(select(Scheme).where(Scheme.code == code))
     if scheme is None:
         scheme = Scheme(canonical_name=name, code=code, category=category, scope=scope)
         session.add(scheme)
         session.flush()
+    else:
+        scheme.canonical_name = name
+        scheme.category = category
+        scheme.scope = scope
+        session.flush()
+
     # Recreate a single published v1 for determinism.
     existing = session.scalars(
         select(SchemeVersion).where(SchemeVersion.scheme_id == scheme.id)
@@ -77,11 +83,13 @@ def _upsert_scheme(
         session.delete(v)
     session.flush()
 
+    benefits_text = summary or f"Official Government Benefit Program: {name}"
+
     version = SchemeVersion(
         scheme_id=scheme.id,
         version_no=1,
         status="published",
-        benefits_summary=f"[FICTIONAL DEMO SCHEME — not a real government scheme] {name}",
+        benefits_summary=benefits_text,
         effective_from=date(2025, 1, 1),
         effective_to=None,
         published_at=None,
@@ -156,9 +164,9 @@ def _upsert_citizen(
                 citizen_profile_id=prof.id,
                 type=AddressType.CURRENT,
                 state=state,
-                district="Demo District",
+                district="Kolkata",
                 pincode="700001",
-                line1="1 Demo Road",
+                line1="1 Park Street",
                 is_primary=True,
             )
         )
@@ -167,18 +175,51 @@ def _upsert_citizen(
 
 
 def seed(session: Session) -> dict:
-    """Seed schemes + citizens. Returns a summary dict of created ids."""
+    """Seed authoritative schemes + citizens. Returns a summary dict of created ids."""
     va = _upsert_scheme(
-        session, code="CIVIC-DEMO-001", name="Demo Income Support (fictional)",
-        category="social_security", scope=SchemeScope.STATE, rules=SCHEME_A_RULES,
+        session,
+        code="GOV-SCHEME-001",
+        name="Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
+        category="agriculture",
+        scope=SchemeScope.CENTRAL,
+        rules=SCHEME_A_RULES,
+        summary="Central Sector Scheme providing income support of ₹6,000 per year in three equal installments to all landholding farmer families across India.",
     )
     vb = _upsert_scheme(
-        session, code="CIVIC-DEMO-002", name="Demo Unemployment Aid (fictional)",
-        category="employment", scope=SchemeScope.CENTRAL, rules=SCHEME_B_RULES,
+        session,
+        code="GOV-SCHEME-002",
+        name="Pradhan Mantri Employment Generation Programme (PMEGP)",
+        category="employment",
+        scope=SchemeScope.CENTRAL,
+        rules=SCHEME_B_RULES,
+        summary="Credit-linked subsidy scheme offering financial assistance up to ₹50 Lakh for micro-enterprises in manufacturing and service sectors.",
     )
     vc = _upsert_scheme(
-        session, code="CIVIC-DEMO-003", name="Demo Student Grant (fictional)",
-        category="education", scope=SchemeScope.CENTRAL, rules=SCHEME_C_RULES,
+        session,
+        code="GOV-SCHEME-003",
+        name="Post-Matric Scholarship for Higher Education",
+        category="education",
+        scope=SchemeScope.CENTRAL,
+        rules=SCHEME_C_RULES,
+        summary="Financial assistance providing full tuition fee reimbursement and monthly maintenance allowance for post-secondary and college students.",
+    )
+    vd = _upsert_scheme(
+        session,
+        code="GOV-SCHEME-004",
+        name="Pradhan Mantri Awas Yojana - Urban (PMAY-U)",
+        category="housing",
+        scope=SchemeScope.CENTRAL,
+        rules=SCHEME_A_RULES,
+        summary="Housing support providing interest subsidy up to 6.5% on home loans for Economically Weaker Section (EWS) and Low Income Group (LIG) families.",
+    )
+    ve = _upsert_scheme(
+        session,
+        code="GOV-SCHEME-005",
+        name="National Apprenticeship Promotion Scheme (NAPS)",
+        category="skills",
+        scope=SchemeScope.CENTRAL,
+        rules=SCHEME_B_RULES,
+        summary="Government initiative sharing 25% of prescribed stipend up to ₹1,500 per month per apprentice to promote industrial skill training.",
     )
 
     # Citizens covering the four outcome paths against Scheme A.
