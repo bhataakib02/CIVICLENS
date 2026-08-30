@@ -7,7 +7,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { getDashboardMetrics } from '@/lib/api/system';
 import { getApplications } from '@/lib/api/applications';
 import { getAuditLogs } from '@/lib/api/audit';
-import { DashboardMetrics, ApplicationSummary, AuditLog } from '@/types/api';
+import { DashboardMetrics, ApplicationSummary, AuditLogEntry } from '@/types/api';
 import {
   FileText,
   AlertTriangle,
@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const { account } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentApplications, setRecentApplications] = useState<ApplicationSummary[]>([]);
-  const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLog[]>([]);
+  const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <p className="text-[11px] text-console-muted">
-                      Citizen ID: <span className="font-mono">{app.citizen_profile_id.slice(0, 8)}...</span>
+                      App Num: <span className="font-mono">{app.application_number || app.id.slice(0, 8)}</span>
                     </p>
                   </div>
 
