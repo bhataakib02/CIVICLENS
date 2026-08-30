@@ -83,8 +83,8 @@ def get_optional_current_user(
 def require_admin(
     current: CurrentUser = Depends(get_current_user),
 ) -> CurrentUser:
-    """Enforce admin role."""
-    if current.role != "admin":
+    """Enforce administrative staff role (admin, scheme_admin, or agent)."""
+    if current.role not in ("admin", "scheme_admin", "agent"):
         raise PermissionDeniedError("Admin privileges required.")
     return current
 

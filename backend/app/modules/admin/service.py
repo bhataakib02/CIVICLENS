@@ -49,8 +49,8 @@ class AdminService:
     # ─── Authorization helpers ──────────────────────────────────────────── #
     @staticmethod
     def _require_admin(current: CurrentUser) -> None:
-        if current.role != UserRole.ADMIN.value:
-            raise PermissionDeniedError()
+        if current.role not in (UserRole.ADMIN.value, UserRole.SCHEME_ADMIN.value, UserRole.AGENT.value):
+            raise PermissionDeniedError("Admin privileges required.")
 
     @staticmethod
     def _require_staff(current: CurrentUser) -> None:

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,11 +8,11 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-console-bg dark:text-console-text antialiased transition-colors duration-200;
+    @apply bg-slate-950 text-slate-100 antialiased transition-colors duration-300 min-h-screen selection:bg-indigo-500 selection:text-white;
   }
 
   * {
-    @apply border-slate-200 dark:border-console-border;
+    @apply border-slate-800;
   }
 
   ::-webkit-scrollbar {
@@ -22,43 +20,46 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-console-bg;
+    @apply bg-slate-950;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-console-border rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-console-muted;
+    @apply bg-slate-800 rounded-full hover:bg-slate-700;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-console-surface/80 backdrop-blur-xl border border-console-border rounded-xl shadow-lg;
+    @apply bg-slate-900/80 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-xl;
   }
+  
   .glass-elevated {
-    @apply bg-console-elevated/90 backdrop-blur-xl border border-console-border rounded-xl shadow-xl;
+    @apply bg-slate-900/90 backdrop-blur-2xl border border-slate-800/90 rounded-3xl shadow-2xl shadow-indigo-950/40;
   }
+
   .btn-primary {
-    @apply bg-console-accent hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg
-      transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-console-accent/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+    @apply bg-gradient-to-r from-indigo-500 via-blue-600 to-indigo-600 hover:from-indigo-600 hover:via-blue-700 hover:to-indigo-700 
+      text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40
+      transition-all duration-200 ease-out active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed
+      focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:ring-offset-2 focus:ring-offset-slate-950;
   }
+
   .btn-secondary {
-    @apply bg-console-surface hover:bg-console-elevated text-console-text font-medium px-4 py-2 rounded-lg
-      border border-console-border transition-all duration-200 ease-out active:scale-[0.98]
+    @apply bg-slate-800/80 hover:bg-slate-800 text-slate-200 font-semibold px-4 py-2.5 rounded-xl
+      border border-slate-700/80 hover:border-slate-600 transition-all duration-200 ease-out active:scale-[0.98]
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-console-border/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+      focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:ring-offset-2 focus:ring-offset-slate-950;
   }
+
   .btn-danger {
-    @apply bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium px-4 py-2 rounded-lg
-      border border-red-600/30 transition-all duration-200 ease-out active:scale-[0.98]
+    @apply bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold px-4 py-2.5 rounded-xl
+      border border-red-500/30 hover:border-red-500/50 transition-all duration-200 ease-out active:scale-[0.98]
       disabled:opacity-50 disabled:cursor-not-allowed
-      focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-console-bg;
+      focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-slate-950;
   }
+
   .input-field {
-    @apply bg-console-bg border border-console-border rounded-lg px-3 py-2 text-console-text
-      placeholder:text-console-muted focus:outline-none focus:ring-2 focus:ring-console-accent/50
-      focus:border-console-accent transition-all duration-200;
+    @apply bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm
+      placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50
+      focus:border-indigo-500 transition-all duration-200 font-medium;
   }
 }
