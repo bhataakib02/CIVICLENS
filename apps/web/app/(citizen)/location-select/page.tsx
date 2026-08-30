@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { StateDistrictSelector, LocationSelectionValue } from '@/components/ui/state-district-selector';
-import { MapPin, Globe2, Building2, Layers, CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { MapPin, Globe2, Building2, Layers, CheckCircle2, RefreshCw, ShieldCheck, Edit3 } from 'lucide-react';
 
 export default function LocationSelectDemoPage() {
   const [selectedLocation, setSelectedLocation] = useState<LocationSelectionValue>({
@@ -34,20 +34,20 @@ export default function LocationSelectDemoPage() {
               India Administrative Location Hierarchy
             </h1>
             <p className="text-blue-100 text-sm mt-1">
-              Authoritative 4-Level Local Government Directory (LGD) Flow
+              Dropdown State/UT & District + Manual Tehsil & Block Entry
             </p>
           </div>
         </div>
 
         {/* Hierarchy Badge Trail */}
         <div className="mt-6 flex flex-wrap items-center gap-2 text-xs font-semibold bg-white/10 p-3 rounded-2xl backdrop-blur-sm border border-white/10">
-          <span className="bg-white/20 px-2.5 py-1 rounded-lg">1. State / Union Territory (28 States + 8 UTs)</span>
+          <span className="bg-white/20 px-2.5 py-1 rounded-lg">1. State / UT Dropdown</span>
           <span>→</span>
-          <span className="bg-white/20 px-2.5 py-1 rounded-lg">2. District (All Districts Option)</span>
+          <span className="bg-white/20 px-2.5 py-1 rounded-lg">2. District Dropdown</span>
           <span>→</span>
-          <span className="bg-white/20 px-2.5 py-1 rounded-lg">3. Tehsil / Sub-District (All Tehsils)</span>
+          <span className="bg-white/20 px-2.5 py-1 rounded-lg">3. Tehsil (Manual Text Input *)</span>
           <span>→</span>
-          <span className="bg-white/20 px-2.5 py-1 rounded-lg">4. Block (All Blocks)</span>
+          <span className="bg-white/20 px-2.5 py-1 rounded-lg">4. Block (Manual Text Input *)</span>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export default function LocationSelectDemoPage() {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            Live Selection & Validation Payload
+            Live Form Selection State
           </h3>
           <span className="text-xs px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono font-bold rounded-lg">
             Realtime Verified
@@ -72,14 +72,14 @@ export default function LocationSelectDemoPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">State / UT</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">1. State / UT Dropdown</span>
             <strong className="text-slate-900 dark:text-white text-sm">
               {selectedLocation.state || 'None Selected'}
             </strong>
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">District</span>
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">2. District Dropdown</span>
             <strong className="text-slate-900 dark:text-white text-sm">
               {selectedLocation.district || 'None Selected'}
             </strong>
@@ -89,23 +89,19 @@ export default function LocationSelectDemoPage() {
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Tehsil / Sub-District</span>
-            <strong className="text-slate-900 dark:text-white text-sm">
-              {selectedLocation.subDistrict || 'None Selected'}
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">3. Tehsil (Manual Input *)</span>
+            <strong className="text-slate-900 dark:text-white text-sm flex items-center gap-1">
+              <Edit3 className="w-3 h-3 text-blue-500" />
+              {selectedLocation.subDistrict || 'Empty'}
             </strong>
-            {selectedLocation.isAllSubDistricts && (
-              <span className="block text-[10px] text-emerald-600 font-bold mt-0.5">★ Wildcard All</span>
-            )}
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Block</span>
-            <strong className="text-slate-900 dark:text-white text-sm">
-              {selectedLocation.block || 'None Selected'}
+            <span className="text-slate-400 block text-[10px] uppercase font-bold">4. Block (Manual Input *)</span>
+            <strong className="text-slate-900 dark:text-white text-sm flex items-center gap-1">
+              <Edit3 className="w-3 h-3 text-blue-500" />
+              {selectedLocation.block || 'Empty'}
             </strong>
-            {selectedLocation.isAllBlocks && (
-              <span className="block text-[10px] text-emerald-600 font-bold mt-0.5">★ Wildcard All</span>
-            )}
           </div>
         </div>
 
@@ -113,7 +109,7 @@ export default function LocationSelectDemoPage() {
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2 text-xs">
             <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-200">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Location Flow Submitted Successfully!
+              Location Hierarchy Saved!
             </div>
             <pre className="p-2.5 bg-emerald-100/50 dark:bg-slate-900 rounded-lg text-[11px] font-mono text-slate-800 dark:text-slate-200 overflow-x-auto">
               {JSON.stringify(submittedLocation, null, 2)}

@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Loader2,
   Layers,
+  Edit3,
   CheckCircle
 } from 'lucide-react';
 
@@ -54,8 +55,8 @@ export function StateDistrictSelector({
   className = '',
   compact = false
 }: StateDistrictSelectorProps) {
-  // Wizard Step: 1 = State/UT, 2 = District, 3 = Tehsil/Sub-District, 4 = Block
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // Wizard Step: 1 = State/UT Dropdown, 2 = District Dropdown & Manual Tehsil/Block Inputs
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Selected Location values
   const [selectedState, setSelectedState] = useState<string>(value?.state || '');
@@ -63,7 +64,7 @@ export function StateDistrictSelector({
   const [selectedSubDistrict, setSelectedSubDistrict] = useState<string>(value?.subDistrict || '');
   const [selectedBlock, setSelectedBlock] = useState<string>(value?.block || '');
 
-  // Lists fetched dynamically
+  // Lists fetched dynamically for State & District dropdowns + Quick Auto-fill suggestion badges
   const [states, setStates] = useState<LocationStateItem[]>([]);
   const [districts, setDistricts] = useState<LocationDistrictItem[]>([]);
   const [subDistricts, setSubDistricts] = useState<LocationSubDistrictItem[]>([]);
@@ -76,7 +77,7 @@ export function StateDistrictSelector({
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Search input filters per step
+  // Search input filter per step
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'STATES' | 'UTS'>('ALL');
 
@@ -106,7 +107,7 @@ export function StateDistrictSelector({
     loadDistricts();
   }, [selectedState]);
 
-  // Fetch sub-districts when selectedDistrict changes
+  // Fetch sub-districts for quick-fill suggestions when selectedDistrict changes
   useEffect(() => {
     if (!selectedDistrict || selectedDistrict === 'ALL' || selectedDistrict === 'All Districts') {
       setSubDistricts([]);
@@ -121,7 +122,7 @@ export function StateDistrictSelector({
     loadSubDistricts();
   }, [selectedDistrict]);
 
-  // Fetch blocks when selectedDistrict or selectedSubDistrict changes
+  // Fetch blocks for quick-fill suggestions when selectedDistrict changes
   useEffect(() => {
     if (!selectedDistrict || selectedDistrict === 'ALL' || selectedDistrict === 'All Districts') {
       setBlocks([]);
@@ -129,12 +130,12 @@ export function StateDistrictSelector({
     }
     async function loadBlocks() {
       setLoadingBlocks(true);
-      const data = await fetchBlocksByDistrict(selectedDistrict, selectedSubDistrict);
+      const data = await fetchBlocksByDistrict(selectedDistrict);
       setBlocks(data);
       setLoadingBlocks(false);
     }
     loadBlocks();
-  }, [selectedDistrict, selectedSubDistrict]);
+  }, [selectedDistrict]);
 
   // Filtered States
   const filteredStates = useMemo(() => {
@@ -154,21 +155,7 @@ export function StateDistrictSelector({
     return districts.filter((d) => d.name.toLowerCase().includes(q));
   }, [districts, searchQuery]);
 
-  // Filtered Sub-districts
-  const filteredSubDistricts = useMemo(() => {
-    if (!searchQuery.trim()) return subDistricts;
-    const q = searchQuery.trim().toLowerCase();
-    return subDistricts.filter((sd) => sd.name.toLowerCase().includes(q));
-  }, [subDistricts, searchQuery]);
-
-  // Filtered Blocks
-  const filteredBlocks = useMemo(() => {
-    if (!searchQuery.trim()) return blocks;
-    const q = searchQuery.trim().toLowerCase();
-    return blocks.filter((b) => b.name.toLowerCase().includes(q));
-  }, [blocks, searchQuery]);
-
-  // STEP 1 HANDLER: Select State/UT
+  // STEP 1 HANDLER: Select State/UT Dropdown
   const handleSelectState = (stateName: string) => {
     setSelectedState(stateName);
     setSelectedDistrict('');
@@ -176,11 +163,11 @@ export function StateDistrictSelector({
     setSelectedBlock('');
     setValidationError(null);
     setSearchQuery('');
-    setStep(2); // Automatically move to Step 2 (District)
+    setStep(2); // Automatically move to Step 2 (District Dropdown & Manual Inputs)
     notifyChange(stateName, '', '', '');
   };
 
-  // STEP 2 HANDLER: Select District
+  // STEP 2 HANDLER: Select District Dropdown
   const handleSelectDistrict = async (districtName: string) => {
     setSelectedDistrict(districtName);
     setSelectedSubDistrict('');
@@ -199,57 +186,29 @@ export function StateDistrictSelector({
       return;
     }
 
-    if (districtName === 'All Districts' || districtName === 'ALL') {
-      // If "All Districts" is chosen, complete selection immediately
-      const val = buildValue(selectedState, 'All Districts', 'All Tehsils', 'All Blocks');
-      notifyChange(selectedState, 'All Districts', 'All Tehsils', 'All Blocks');
-      if (onComplete) onComplete(val);
-    } else {
-      setStep(3); // Advance to Step 3 (Tehsil)
-      notifyChange(selectedState, districtName, '', '');
-    }
+    notifyChange(selectedState, districtName, '', '');
   };
 
-  // STEP 3 HANDLER: Select Sub-District / Tehsil
-  const handleSelectSubDistrict = async (subDistrictName: string) => {
-    setSelectedSubDistrict(subDistrictName);
-    setSelectedBlock('');
-    setValidationError(null);
-    setSearchQuery('');
-
-    if (subDistrictName === 'All Tehsils' || subDistrictName === 'ALL') {
-      const val = buildValue(selectedState, selectedDistrict, 'All Tehsils', 'All Blocks');
-      notifyChange(selectedState, selectedDistrict, 'All Tehsils', 'All Blocks');
-      if (onComplete) onComplete(val);
-    } else {
-      setStep(4); // Advance to Step 4 (Block)
-      notifyChange(selectedState, selectedDistrict, subDistrictName, '');
-    }
+  // Manual Tehsil Input Handler
+  const handleSubDistrictChange = (val: string) => {
+    setSelectedSubDistrict(val);
+    notifyChange(selectedState, selectedDistrict, val, selectedBlock);
   };
 
-  // STEP 4 HANDLER: Select Block / Finish
-  const handleSelectBlock = (blockName: string) => {
-    setSelectedBlock(blockName);
-    setValidationError(null);
-    const val = buildValue(selectedState, selectedDistrict, selectedSubDistrict, blockName);
-    notifyChange(selectedState, selectedDistrict, selectedSubDistrict, blockName);
-    if (onComplete) onComplete(val);
+  // Manual Block Input Handler
+  const handleBlockChange = (val: string) => {
+    setSelectedBlock(val);
+    notifyChange(selectedState, selectedDistrict, selectedSubDistrict, val);
   };
 
   // Back Button Navigation Handler
   const handleBack = () => {
     setValidationError(null);
     setSearchQuery('');
-    if (step === 4) {
-      setSelectedBlock('');
-      setStep(3);
-    } else if (step === 3) {
-      setSelectedSubDistrict('');
-      setStep(2);
-    } else if (step === 2) {
-      setSelectedDistrict('');
-      setStep(1);
-    }
+    setSelectedDistrict('');
+    setSelectedSubDistrict('');
+    setSelectedBlock('');
+    setStep(1);
   };
 
   // Complete Reset Handler
@@ -286,8 +245,6 @@ export function StateDistrictSelector({
   };
 
   const isAllDistricts = selectedDistrict === 'All Districts' || selectedDistrict === 'ALL';
-  const isAllSubDistricts = selectedSubDistrict === 'All Tehsils' || selectedSubDistrict === 'ALL';
-  const isAllBlocks = selectedBlock === 'All Blocks' || selectedBlock === 'ALL';
 
   return (
     <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm ${className}`}>
@@ -303,12 +260,12 @@ export function StateDistrictSelector({
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            LGD / IGOD Standard: State/UT → District → Tehsil/Sub-District → Block
+            LGD Standard: State/UT & District Dropdowns + Manual Tehsil & Block Inputs
           </p>
         </div>
 
         {/* Multi-step Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
           <button
             type="button"
             onClick={() => setStep(1)}
@@ -318,7 +275,7 @@ export function StateDistrictSelector({
                 : 'text-slate-500'
             }`}
           >
-            1. State/UT
+            1. State/UT Dropdown
           </button>
           <ChevronRight className="w-3 h-3 text-slate-400" />
           <button
@@ -331,33 +288,7 @@ export function StateDistrictSelector({
                 : 'text-slate-400 disabled:opacity-50'
             }`}
           >
-            2. District
-          </button>
-          <ChevronRight className="w-3 h-3 text-slate-400" />
-          <button
-            type="button"
-            disabled={!selectedDistrict || isAllDistricts}
-            onClick={() => selectedDistrict && !isAllDistricts && setStep(3)}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              step === 3
-                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
-                : 'text-slate-400 disabled:opacity-50'
-            }`}
-          >
-            3. Tehsil
-          </button>
-          <ChevronRight className="w-3 h-3 text-slate-400" />
-          <button
-            type="button"
-            disabled={!selectedSubDistrict || isAllSubDistricts}
-            onClick={() => selectedSubDistrict && !isAllSubDistricts && setStep(4)}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              step === 4
-                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
-                : 'text-slate-400 disabled:opacity-50'
-            }`}
-          >
-            4. Block
+            2. District & Details
           </button>
         </div>
       </div>
@@ -370,7 +301,7 @@ export function StateDistrictSelector({
         </div>
       )}
 
-      {/* STEP 1: STATE / UNION TERRITORY */}
+      {/* STEP 1: STATE / UNION TERRITORY DROPDOWN */}
       {step === 1 && (
         <div className="mt-4 space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -411,12 +342,12 @@ export function StateDistrictSelector({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-              Select State / Union Territory:
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              State / Union Territory Dropdown <span className="text-red-500">*</span>:
             </label>
             {loadingStates ? (
               <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading authoritative LGD State list...
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading official 36 States & Union Territories...
               </div>
             ) : (
               <select
@@ -424,7 +355,7 @@ export function StateDistrictSelector({
                 onChange={(e) => e.target.value && handleSelectState(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Choose State or Union Territory --</option>
+                <option value="">-- Select State or Union Territory --</option>
                 <optgroup label="28 States of India">
                   {states.filter((s) => s.type === 'STATE').map((s) => (
                     <option key={s.code} value={s.name}>{s.name}</option>
@@ -466,20 +397,20 @@ export function StateDistrictSelector({
         </div>
       )}
 
-      {/* STEP 2: DISTRICT SELECTION */}
+      {/* STEP 2: DISTRICT DROPDOWN & MANUAL TEHSIL/BLOCK INPUTS */}
       {step === 2 && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-5">
           <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/60 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg border border-blue-300 dark:border-blue-700"
+                className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg border border-blue-300 dark:border-blue-700 hover:bg-blue-50"
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back
               </button>
               <span className="text-xs">
-                State/UT: <strong className="text-blue-900 dark:text-blue-200 font-bold">{selectedState}</strong>
+                State/UT Selected: <strong className="text-blue-900 dark:text-blue-200 font-bold">{selectedState}</strong>
               </span>
             </div>
             <button type="button" onClick={handleReset} className="text-[11px] text-slate-500 hover:text-red-600 flex items-center gap-1">
@@ -487,24 +418,14 @@ export function StateDistrictSelector({
             </button>
           </div>
 
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search districts in ${selectedState}...`}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-              Select District:
+          {/* 2. District Selection Dropdown */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              2. District Selection <span className="text-red-500">*</span>:
             </label>
             {loadingDistricts ? (
               <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading official districts...
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading official districts for {selectedState}...
               </div>
             ) : (
               <select
@@ -512,7 +433,7 @@ export function StateDistrictSelector({
                 onChange={(e) => e.target.value && handleSelectDistrict(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Choose District --</option>
+                <option value="">-- Choose District in {selectedState} --</option>
                 <option value="All Districts" className="font-bold text-blue-600 bg-blue-50">
                   ★ All Districts (Entire {selectedState})
                 </option>
@@ -521,243 +442,97 @@ export function StateDistrictSelector({
                 ))}
               </select>
             )}
-          </div>
 
-          {/* District Grid */}
-          <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border border-slate-100 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
-            <button
-              type="button"
-              onClick={() => handleSelectDistrict('All Districts')}
-              className={`col-span-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                isAllDistricts
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span>All Districts (Entire {selectedState})</span>
-              </div>
-              {isAllDistricts && <Check className="w-4 h-4" />}
-            </button>
-
-            {filteredDistricts.map((d) => (
+            {/* Quick District Grid Buttons */}
+            <div className="max-h-48 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border border-slate-100 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
               <button
-                key={d.code}
                 type="button"
-                onClick={() => handleSelectDistrict(d.name)}
-                className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all ${
-                  selectedDistrict === d.name
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                onClick={() => handleSelectDistrict('All Districts')}
+                className={`col-span-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  isAllDistricts
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200'
                 }`}
               >
-                <div className="flex items-center gap-2 truncate">
-                  <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                  <span className="truncate">{d.name}</span>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>All Districts (Entire {selectedState})</span>
                 </div>
-                {selectedDistrict === d.name && <Check className="w-3.5 h-3.5 text-white" />}
+                {isAllDistricts && <Check className="w-4 h-4" />}
               </button>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* STEP 3: TEHSIL / SUB-DISTRICT */}
-      {step === 3 && (
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/60 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg border border-blue-300 dark:border-blue-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back
-              </button>
-              <span className="text-xs">
-                State: <strong>{selectedState}</strong> / District: <strong className="text-blue-900 dark:text-blue-200 font-bold">{selectedDistrict}</strong>
-              </span>
+              {districts.map((d) => (
+                <button
+                  key={d.code}
+                  type="button"
+                  onClick={() => handleSelectDistrict(d.name)}
+                  className={`flex items-center justify-between p-2 rounded-xl border text-left text-xs transition-all ${
+                    selectedDistrict === d.name
+                      ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                    <span className="truncate">{d.name}</span>
+                  </div>
+                  {selectedDistrict === d.name && <Check className="w-3.5 h-3.5 text-white" />}
+                </button>
+              ))}
             </div>
-            <button type="button" onClick={handleReset} className="text-[11px] text-slate-500 hover:text-red-600 flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" /> Reset
-            </button>
           </div>
 
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search tehsils / taluks in ${selectedDistrict}...`}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-              Select Tehsil / Sub-District / Taluk / Mandal:
-            </label>
-            {loadingSubDistricts ? (
-              <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading tehsils / sub-districts...
-              </div>
-            ) : (
-              <select
-                value={selectedSubDistrict}
-                onChange={(e) => e.target.value && handleSelectSubDistrict(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Choose Tehsil / Sub-District --</option>
-                <option value="All Tehsils" className="font-bold text-blue-600 bg-blue-50">
-                  ★ All Tehsils (Entire {selectedDistrict} District)
-                </option>
-                {subDistricts.map((sd) => (
-                  <option key={sd.code} value={sd.name}>{sd.official_name || sd.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Sub-district Grid */}
-          <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border border-slate-100 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
-            <button
-              type="button"
-              onClick={() => handleSelectSubDistrict('All Tehsils')}
-              className={`col-span-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                isAllSubDistricts
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span>All Tehsils (Entire {selectedDistrict} District)</span>
-              </div>
-              {isAllSubDistricts && <Check className="w-4 h-4" />}
-            </button>
-
-            {filteredSubDistricts.map((sd) => (
-              <button
-                key={sd.code}
-                type="button"
-                onClick={() => handleSelectSubDistrict(sd.name)}
-                className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all ${
-                  selectedSubDistrict === sd.name
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                  <span className="truncate">{sd.name}</span>
+          {/* 3. Tehsil / Sub-District Manual Text Input */}
+          {selectedDistrict && (
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1">
+                  <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  3. Tehsil / Sub-District / Taluk <span className="text-red-500">*</span>:
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={selectedSubDistrict}
+                    onChange={(e) => handleSubDistrictChange(e.target.value)}
+                    placeholder="Type your Tehsil / Sub-District / Taluk name manually..."
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                  />
+                  {selectedSubDistrict && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Filled
+                    </span>
+                  )}
                 </div>
-                {selectedSubDistrict === sd.name && <Check className="w-3.5 h-3.5 text-white" />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+              </div>
 
-      {/* STEP 4: BLOCK SELECTION */}
-      {step === 4 && (
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/60 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg border border-blue-300 dark:border-blue-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back
-              </button>
-              <span className="text-xs">
-                District: <strong>{selectedDistrict}</strong> / Tehsil: <strong className="text-blue-900 dark:text-blue-200 font-bold">{selectedSubDistrict}</strong>
-              </span>
+              {/* 4. Block / Mandal Manual Text Input */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1">
+                  <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  4. Block / Mandal / CD Block <span className="text-red-500">*</span>:
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={selectedBlock}
+                    onChange={(e) => handleBlockChange(e.target.value)}
+                    placeholder="Type your Block / Mandal / Ward name manually..."
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                  />
+                  {selectedBlock && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Filled
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <button type="button" onClick={handleReset} className="text-[11px] text-slate-500 hover:text-red-600 flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" /> Reset
-            </button>
-          </div>
-
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search blocks in ${selectedSubDistrict}...`}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-              Select Community Development Block:
-            </label>
-            {loadingBlocks ? (
-              <div className="py-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading blocks...
-              </div>
-            ) : (
-              <select
-                value={selectedBlock}
-                onChange={(e) => e.target.value && handleSelectBlock(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Choose CD Block --</option>
-                <option value="All Blocks" className="font-bold text-blue-600 bg-blue-50">
-                  ★ All Blocks (Entire {selectedSubDistrict})
-                </option>
-                {blocks.map((b) => (
-                  <option key={b.code} value={b.name}>{b.official_name || b.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Block Grid */}
-          <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border border-slate-100 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
-            <button
-              type="button"
-              onClick={() => handleSelectBlock('All Blocks')}
-              className={`col-span-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                isAllBlocks
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-emerald-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span>All Blocks (Entire {selectedSubDistrict})</span>
-              </div>
-              {isAllBlocks && <Check className="w-4 h-4" />}
-            </button>
-
-            {filteredBlocks.map((b) => (
-              <button
-                key={b.code}
-                type="button"
-                onClick={() => handleSelectBlock(b.name)}
-                className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all ${
-                  selectedBlock === b.name
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                  <span className="truncate">{b.name}</span>
-                </div>
-                {selectedBlock === b.name && <Check className="w-3.5 h-3.5 text-white" />}
-              </button>
-            ))}
-          </div>
+          )}
         </div>
       )}
 
-      {/* Confirmation & Summary Footer */}
+      {/* Summary Footer */}
       {selectedState && (
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
@@ -765,8 +540,8 @@ export function StateDistrictSelector({
             <span>
               Hierarchy: <strong>{selectedState}</strong>
               {selectedDistrict && <> → <strong>{selectedDistrict}</strong></>}
-              {selectedSubDistrict && <> → <strong>{selectedSubDistrict}</strong></>}
-              {selectedBlock && <> → <strong>{selectedBlock}</strong></>}
+              {selectedSubDistrict && <> → Tehsil: <strong>{selectedSubDistrict}</strong></>}
+              {selectedBlock && <> → Block: <strong>{selectedBlock}</strong></>}
             </span>
           </div>
 

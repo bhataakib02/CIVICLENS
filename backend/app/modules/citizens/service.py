@@ -162,13 +162,17 @@ class CitizensService:
         if make_primary:
             self._repo.clear_primary_flags(profile.id)
 
+        full_line1 = payload.line1
+        if payload.line2 and payload.line2.strip():
+            full_line1 = f"{payload.line1.strip()}, {payload.line2.strip()}"
+
         address = Address(
             citizen_profile_id=profile.id,
             type=payload.type,
             state=payload.state,
             district=payload.district,
             pincode=payload.pincode,
-            line1=payload.line1,
+            line1=full_line1,
             is_primary=make_primary,
         )
         self._repo.add_address(address)
@@ -196,6 +200,11 @@ class CitizensService:
         changes = payload.model_dump(exclude_unset=True)
 
         make_primary = changes.pop("is_primary", None)
+        line2_val = changes.pop("line2", None)
+        if line2_val and line2_val.strip():
+            base_l1 = changes.get("line1", address.line1) or ""
+            changes["line1"] = f"{base_l1.strip()}, {line2_val.strip()}"
+
         for field, value in changes.items():
             setattr(address, field, value)
 

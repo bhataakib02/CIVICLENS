@@ -109,6 +109,53 @@ export function ProfileForm() {
     setError(null);
     setSuccess(null);
 
+    // Mandatory Field Validations
+    if (!mobileNumber.trim()) {
+      setError('Mobile Number is a mandatory field.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!dateOfBirth) {
+      setError('Date of Birth is a mandatory field for scheme eligibility.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!gender) {
+      setError('Gender selection is mandatory.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!category) {
+      setError('Social Category selection is mandatory.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!income || isNaN(parseFloat(income))) {
+      setError('Declared Annual Income is a mandatory field.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!line1.trim()) {
+      setError('Residential Address Line 1 is mandatory.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!stateName) {
+      setError('State / Union Territory selection is mandatory.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!district) {
+      setError('District selection is mandatory.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!pincode.trim()) {
+      setError('Pincode is a mandatory field.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // 1. Update Core Citizen Profile
       await updateProfile({
@@ -125,7 +172,7 @@ export function ProfileForm() {
       const addressPayload = {
         type: 'current' as const,
         line1,
-        line2,
+        line2: line2 || undefined,
         district,
         state: stateName,
         pincode,
@@ -142,7 +189,12 @@ export function ProfileForm() {
       await refreshProfile();
       setSuccess('Profile, Address, Mobile & Qualification details updated successfully! Scheme eligibility re-evaluated.');
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile details.');
+      if (err.fieldErrors && Array.isArray(err.fieldErrors) && err.fieldErrors.length > 0) {
+        const details = err.fieldErrors.map((f: any) => `${f.field ? f.field + ': ' : ''}${f.message}`).join(', ');
+        setError(`Validation Error: ${details}`);
+      } else {
+        setError(err.message || 'Failed to update profile details.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -212,9 +264,12 @@ export function ProfileForm() {
       </Card>
 
       <Alert type="warning">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 text-xs">
           <ShieldAlert className="w-4 h-4 text-amber-700 dark:text-amber-400 flex-shrink-0" />
-          <span>{t.profile.profileUpdatedNotice}</span>
+          <span>
+            <strong>Mandatory Sections:</strong> All fields marked with a red asterisk (
+            <span className="text-red-600 font-bold">*</span>) are mandatory to complete for citizen scheme matching.
+          </span>
         </div>
       </Alert>
 
@@ -231,28 +286,38 @@ export function ProfileForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label={t.profile.mobileLabel}
-              type="text"
-              value={mobileNumber}
-              onChange={(e) => setMobileNumber(e.target.value)}
-              placeholder={t.profile.mobilePlaceholder}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.mobileLabel} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Input
+                type="text"
+                required
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                placeholder={t.profile.mobilePlaceholder}
+              />
+            </div>
 
-            <Select
-              label={t.profile.qualLabel}
-              value={qualification}
-              onChange={(e) => setQualification(e.target.value)}
-              options={[
-                { value: 'PRIMARY', label: t.profile.qualPrimary },
-                { value: 'SECONDARY', label: t.profile.qualSecondary },
-                { value: 'HIGHER_SECONDARY', label: t.profile.qualHigherSec },
-                { value: 'DIPLOMA', label: t.profile.qualDiploma },
-                { value: 'UNDERGRADUATE', label: t.profile.qualUndergrad },
-                { value: 'POSTGRADUATE', label: t.profile.qualPostgrad },
-                { value: 'DOCTORATE', label: t.profile.qualDoctorate }
-              ]}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.qualLabel} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Select
+                required
+                value={qualification}
+                onChange={(e) => setQualification(e.target.value)}
+                options={[
+                  { value: 'PRIMARY', label: t.profile.qualPrimary },
+                  { value: 'SECONDARY', label: t.profile.qualSecondary },
+                  { value: 'HIGHER_SECONDARY', label: t.profile.qualHigherSec },
+                  { value: 'DIPLOMA', label: t.profile.qualDiploma },
+                  { value: 'UNDERGRADUATE', label: t.profile.qualUndergrad },
+                  { value: 'POSTGRADUATE', label: t.profile.qualPostgrad },
+                  { value: 'DOCTORATE', label: t.profile.qualDoctorate }
+                ]}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -265,73 +330,105 @@ export function ProfileForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label={t.profile.dob}
-              type="date"
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.dob} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Input
+                type="date"
+                required
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+              />
+            </div>
 
-            <Select
-              label={t.profile.gender}
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              options={[
-                { value: '', label: t.profile.genderSelect },
-                { value: 'female', label: t.profile.genderFemale },
-                { value: 'male', label: t.profile.genderMale },
-                { value: 'other', label: t.profile.genderOther }
-              ]}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.gender} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Select
+                required
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                options={[
+                  { value: '', label: t.profile.genderSelect },
+                  { value: 'female', label: t.profile.genderFemale },
+                  { value: 'male', label: t.profile.genderMale },
+                  { value: 'other', label: t.profile.genderOther }
+                ]}
+              />
+            </div>
 
-            <Select
-              label={t.profile.category}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              options={[
-                { value: '', label: t.profile.categorySelect },
-                { value: 'general', label: t.profile.categoryGeneral },
-                { value: 'obc', label: t.profile.categoryObc },
-                { value: 'sc', label: t.profile.categorySc },
-                { value: 'st', label: t.profile.categorySt },
-                { value: 'ews', label: t.profile.categoryEws }
-              ]}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.category} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Select
+                required
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                options={[
+                  { value: '', label: t.profile.categorySelect },
+                  { value: 'general', label: t.profile.categoryGeneral },
+                  { value: 'obc', label: t.profile.categoryObc },
+                  { value: 'sc', label: t.profile.categorySc },
+                  { value: 'st', label: t.profile.categorySt },
+                  { value: 'ews', label: t.profile.categoryEws }
+                ]}
+              />
+            </div>
 
-            <Input
-              label={t.profile.occupation}
-              type="text"
-              placeholder={t.profile.occupationPlaceholder}
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.occupation}
+              </label>
+              <Input
+                type="text"
+                placeholder={t.profile.occupationPlaceholder}
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+              />
+            </div>
 
-            <Input
-              label={t.profile.income}
-              type="number"
-              placeholder="e.g. 180000"
-              value={income}
-              onChange={(e) => setIncome(e.target.value)}
-              helperText={income ? `Formatted: ${formatCurrency(parseFloat(income))}` : ''}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.income} <span className="text-red-500 font-bold">*</span>
+              </label>
+              <Input
+                type="number"
+                required
+                placeholder="e.g. 180000"
+                value={income}
+                onChange={(e) => setIncome(e.target.value)}
+                helperText={income ? `Formatted: ${formatCurrency(parseFloat(income))}` : ''}
+              />
+            </div>
 
-            <Select
-              label={t.profile.disability}
-              value={disability}
-              onChange={(e) => setDisability(e.target.value)}
-              options={[
-                { value: 'false', label: t.profile.disabilityNo },
-                { value: 'true', label: t.profile.disabilityYes }
-              ]}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.disability}
+              </label>
+              <Select
+                value={disability}
+                onChange={(e) => setDisability(e.target.value)}
+                options={[
+                  { value: 'false', label: t.profile.disabilityNo },
+                  { value: 'true', label: t.profile.disabilityYes }
+                ]}
+              />
+            </div>
 
-            <Input
-              label={t.profile.familySize}
-              type="number"
-              placeholder="e.g. 4"
-              value={familySize}
-              onChange={(e) => setFamilySize(e.target.value)}
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.familySize}
+              </label>
+              <Input
+                type="number"
+                placeholder="e.g. 4"
+                value={familySize}
+                onChange={(e) => setFamilySize(e.target.value)}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -345,27 +442,36 @@ export function ProfileForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label={t.profile.addrLine1}
-                type="text"
-                value={line1}
-                onChange={(e) => setLine1(e.target.value)}
-                placeholder={t.profile.addrLine1Placeholder}
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  {t.profile.addrLine1} <span className="text-red-500 font-bold">*</span>
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={line1}
+                  onChange={(e) => setLine1(e.target.value)}
+                  placeholder={t.profile.addrLine1Placeholder}
+                />
+              </div>
 
-              <Input
-                label={t.profile.addrLine2}
-                type="text"
-                value={line2}
-                onChange={(e) => setLine2(e.target.value)}
-                placeholder={t.profile.addrLine2Placeholder}
-              />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  {t.profile.addrLine2}
+                </label>
+                <Input
+                  type="text"
+                  value={line2}
+                  onChange={(e) => setLine2(e.target.value)}
+                  placeholder={t.profile.addrLine2Placeholder}
+                />
+              </div>
             </div>
 
             {/* Complete 4-Level India Administrative Location Hierarchy Component */}
             <div className="pt-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                Administrative Location Hierarchy (LGD Standard):
+                Administrative Location Hierarchy (LGD Standard) <span className="text-red-500 font-bold">*</span>:
               </label>
               <StateDistrictSelector
                 value={{
@@ -383,9 +489,12 @@ export function ProfileForm() {
             </div>
 
             <div className="pt-2 sm:w-1/2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t.profile.addrPincode} <span className="text-red-500 font-bold">*</span>
+              </label>
               <Input
-                label={t.profile.addrPincode}
                 type="text"
+                required
                 value={pincode}
                 onChange={(e) => setPincode(e.target.value)}
                 placeholder={t.profile.addrPincodePlaceholder}

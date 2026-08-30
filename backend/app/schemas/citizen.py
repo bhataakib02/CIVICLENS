@@ -73,6 +73,7 @@ class AddressInput(BaseModel):
     district: str = Field(min_length=1, max_length=64)
     pincode: str
     line1: str = Field(min_length=1)
+    line2: str | None = None
     is_primary: bool = False
 
     @field_validator("pincode")
@@ -94,6 +95,7 @@ class AddressUpdate(BaseModel):
     district: str | None = Field(default=None, min_length=1, max_length=64)
     pincode: str | None = None
     line1: str | None = Field(default=None, min_length=1)
+    line2: str | None = None
     is_primary: bool | None = None
 
     @field_validator("pincode")
