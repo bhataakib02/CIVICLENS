@@ -75,26 +75,30 @@ def _upsert_scheme(
         scheme.scope = scope
         session.flush()
 
-    # Recreate a single published v1 for determinism.
-    existing = session.scalars(
-        select(SchemeVersion).where(SchemeVersion.scheme_id == scheme.id)
-    ).all()
-    for v in existing:
-        session.delete(v)
-    session.flush()
-
     benefits_text = summary or f"Official Government Benefit Program: {name}"
 
-    version = SchemeVersion(
-        scheme_id=scheme.id,
-        version_no=1,
-        status="published",
-        benefits_summary=benefits_text,
-        effective_from=date(2025, 1, 1),
-        effective_to=None,
-        published_at=None,
+    version = session.scalar(
+        select(SchemeVersion).where(SchemeVersion.scheme_id == scheme.id, SchemeVersion.version_no == 1)
     )
-    session.add(version)
+    if version is None:
+        version = SchemeVersion(
+            scheme_id=scheme.id,
+            version_no=1,
+            status="published",
+            benefits_summary=benefits_text,
+            effective_from=date(2025, 1, 1),
+            effective_to=None,
+            published_at=None,
+        )
+        session.add(version)
+        session.flush()
+    else:
+        version.benefits_summary = benefits_text
+        version.status = "published"
+        session.flush()
+
+    # Clear existing rules for this version
+    session.query(EligibilityRule).filter(EligibilityRule.scheme_version_id == version.id).delete()
     session.flush()
 
     root = validate_rule_set(rules)
