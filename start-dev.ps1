@@ -35,7 +35,7 @@ Start-Sleep -Seconds 2
 Write-Host "[3/4] Starting citizen frontend (port 3000)..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
-    "cd d:\CIVICLENS\apps\web; Write-Host 'FRONTEND - Citizen App :3000' -ForegroundColor Green; npm run dev"
+    "cd d:\CIVICLENS\frontend\web; Write-Host 'FRONTEND - Citizen App :3000' -ForegroundColor Green; npm run dev"
 ) -WindowStyle Normal
 
 Start-Sleep -Seconds 1
@@ -44,7 +44,7 @@ Start-Sleep -Seconds 1
 Write-Host "[4/4] Starting admin panel (port 3001)..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
-    "cd d:\CIVICLENS\apps\admin; Write-Host 'FRONTEND - Admin Panel :3001' -ForegroundColor Magenta; npm run dev"
+    "cd d:\CIVICLENS\frontend\admin; Write-Host 'FRONTEND - Admin Panel :3001' -ForegroundColor Magenta; npm run dev"
 ) -WindowStyle Normal
 
 Write-Host ""

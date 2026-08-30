@@ -101,7 +101,7 @@ services:
 
   web:
     build:
-      context: ./apps/web
+      context: ./frontend/web
       dockerfile: Dockerfile
     container_name: civiclens-web
     restart: unless-stopped
@@ -114,7 +114,7 @@ services:
 
   admin:
     build:
-      context: ./apps/admin
+      context: ./frontend/admin
       dockerfile: Dockerfile
     container_name: civiclens-admin
     restart: unless-stopped

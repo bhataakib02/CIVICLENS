@@ -1,75 +1,28 @@
-================================================================
-  CIVICLENS — LOCAL DEVELOPMENT START COMMANDS
-================================================================
+=== CIVICLENS STARTUP COMMANDS ===
 
-  *** EASIEST: ONE COMMAND TO START EVERYTHING ***
+1. Start Infrastructure (PostgreSQL & Redis):
+   docker compose up -d
 
-  cd d:\CIVICLENS
-  .\start-dev.ps1
+2. Backend API Server (FastAPI on http://localhost:8000):
+   cd backend
+   .venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  Opens 3 windows automatically:
-    - Backend (Docker)         →  http://localhost:8000
-    - Citizen Frontend         →  http://localhost:3000
-    - Admin Panel              →  http://localhost:3001
+3. Frontend Admin Console (Next.js on http://localhost:3001):
+   cd frontend\admin
+   npm run dev
 
-================================================================
+4. Frontend Citizen Web App (Next.js on http://localhost:3000):
+   cd frontend\web
+   npm run dev
 
-MANUAL (if you prefer separate terminals):
+5. Seed Real Opportunity Sources & Accounts:
+   cd backend
+   .venv\Scripts\python.exe -m app.seeds.seed_all
 
-STEP 1: Start Backend (Terminal 1)
-------------------------------------
-cd d:\CIVICLENS
-docker compose up postgres redis api worker migration
+6. Run Real Opportunity Live Crawler & Diagnostics:
+   cd backend
+   .venv\Scripts\python.exe verify_real_sources_ingestion.py
 
-  Runs: Database, Cache, API (localhost:8000), Worker
-  API Docs: http://localhost:8000/docs
-
-
-STEP 2: Start Frontend (Terminal 2)
-------------------------------------
-cd d:\CIVICLENS\apps\web
-npm run dev
-
-  Opens at: http://localhost:3000
-  Hot-reload: YES — every file save reflects instantly in browser
-
-
-OPTIONAL: Start Admin Panel (Terminal 3)
-------------------------------------
-cd d:\CIVICLENS\apps\admin
-npm run dev
-
-  Opens at: http://localhost:3001
-
-
-================================================================
-  TO STOP EVERYTHING
-================================================================
-
-1. Ctrl+C in each frontend terminal
-
-2. In the Docker terminal:
-   Ctrl+C
-   docker compose down
-
-
-================================================================
-  QUICK REFERENCE
-================================================================
-
-  Frontend (citizen)  →  http://localhost:3000
-  Admin Panel         →  http://localhost:3001
-  Backend API         →  http://localhost:8000
-  API Docs (Swagger)  →  http://localhost:8000/docs
-  PostgreSQL          →  localhost:5432
-  Redis               →  localhost:6379
-
-================================================================
-  IMPORTANT NOTE
-================================================================
-
-  Do NOT use "docker compose up" for the web/admin containers.
-  They run a frozen production build with no hot-reload.
-  Always run the frontend locally with "npm run dev".
-
-================================================================
+7. Run Backend Automated Test Suite:
+   cd backend
+   .venv\Scripts\python.exe -m pytest tests/ -v

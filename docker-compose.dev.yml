@@ -1,5 +1,5 @@
 # Development override: run ONLY backend services in Docker.
-# Start frontend locally with: cd apps/web && npm run dev
+# Start frontend locally with: cd frontend/web && npm run dev
 #
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
