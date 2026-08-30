@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { CitizenProfileView } from '@/components/citizens/citizen-profile';
 import { getCitizenDetail, getCitizenConsents } from '@/lib/api/citizens';
 import { CitizenDetail } from '@/types/api';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CitizenDetailPage() {
@@ -36,27 +36,30 @@ export default function CitizenDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link href="/citizens" className="btn-secondary text-xs p-2">
+        <Link href="/citizens" className="btn-secondary text-xs p-2 rounded-xl border border-slate-200 dark:border-slate-800">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-console-text tracking-tight">Citizen Record</h1>
-          <p className="text-xs text-console-muted">ID: {userId}</p>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-indigo-500" />
+            <span>Citizen Profile Record</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">User UUID: {userId}</p>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
           {error}
         </div>
       )}
 
       {loading && !citizen ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-console-accent" />
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
       ) : citizen ? (
-        <CitizenProfileView citizen={citizen} />
+        <CitizenProfileView citizen={citizen} onRefresh={fetchDetail} />
       ) : null}
     </div>
   );

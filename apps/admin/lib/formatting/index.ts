@@ -45,3 +45,15 @@ export function formatStatusLabel(status: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+export function formatReadableId(id: string | null | undefined, prefix: string = 'CIT'): string {
+  if (!id) return `${prefix}-0001`;
+  if (id.includes('@')) {
+    const handle = id.split('@')[0].toUpperCase();
+    return `${prefix}-${handle}`;
+  }
+  if (id.length <= 12) return `${prefix}-${id.toUpperCase()}`;
+  const cleanId = id.replace(/-/g, '');
+  const hexPart = cleanId.substring(cleanId.length - 4).toUpperCase();
+  return `${prefix}-${hexPart}`;
+}

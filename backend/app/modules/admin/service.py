@@ -209,6 +209,111 @@ class AdminService:
             for c in consents
         ]
 
+    def update_citizen(
+        self, current: CurrentUser, user_id: uuid.UUID, data: dict
+    ) -> CitizenDetailAdmin:
+        self._require_staff(current)
+        user = self._repo.get_citizen_user(user_id)
+        if user is None:
+            raise NotFoundError("Citizen not found.")
+        
+        if "email" in data and data["email"] is not None:
+            user.email = data["email"]
+        if "phone_number" in data and data["phone_number"] is not None:
+            user.phone_number = data["phone_number"]
+        if "password" in data and data["password"]:
+            user.password_hash = hash_password(data["password"])
+        if "status" in data and data["status"]:
+            from app.models.user import UserStatus
+            user.status = UserStatus(data["status"].lower())
+            
+        self._audit.record(
+            action="admin.citizen_updated",
+            entity_type="user",
+            entity_id=user_id,
+            actor_user_id=current.id,
+        )
+        self._session.commit()
+        return self.get_citizen(current, user_id)
+
+    def send_citizen_otp(self, current: CurrentUser, user_id: uuid.UUID) -> dict:
+        self._require_staff(current)
+        user = self._repo.get_citizen_user(user_id)
+        if user is None:
+            raise NotFoundError("Citizen not found.")
+        
+        target = user.email or user.phone_number
+        if not target:
+            raise ValidationError("Citizen has no registered email or phone number.")
+            
+        from app.modules.auth.otp_service import OTPService
+        otp_service = OTPService(self._session)
+        otp_service.request_otp(target=target)
+        
+        self._audit.record(
+            action="admin.citizen_otp_dispatched",
+            entity_type="user",
+            entity_id=user_id,
+            actor_user_id=current.id,
+            diff={"target": target},
+        )
+        self._session.commit()
+        return {
+            "success": True,
+            "message": f"Real 6-digit OTP dispatched to {target}.",
+            "target": target,
+        }
+
+    def delete_citizen(
+        self, current: CurrentUser, user_id: uuid.UUID
+    ) -> dict:
+        self._require_staff(current)
+        user = self._repo.get_citizen_user(user_id)
+        if user is None:
+            raise NotFoundError("Citizen not found.")
+            
+        self._session.delete(user)
+        self._audit.record(
+            action="admin.citizen_deleted",
+            entity_type="user",
+            entity_id=user_id,
+            actor_user_id=current.id,
+        )
+        self._session.commit()
+        return {"success": True, "message": "Citizen record deleted."}
+
+    def update_citizen_profile(
+        self, current: CurrentUser, user_id: uuid.UUID, data: dict
+    ) -> CitizenDetailAdmin:
+        self._require_staff(current)
+        profile = self._repo.get_citizen_profile(user_id)
+        if profile is None:
+            from app.models.profile import CitizenProfile
+            profile = CitizenProfile(user_id=user_id)
+            self._session.add(profile)
+            
+        if "category" in data and data["category"] is not None:
+            profile.category = data["category"]
+        if "occupation" in data and data["occupation"] is not None:
+            profile.occupation = data["occupation"]
+        if "gender" in data and data["gender"] is not None:
+            profile.gender = data["gender"]
+        if "declared_annual_income" in data and data["declared_annual_income"] is not None:
+            profile.declared_annual_income = data["declared_annual_income"]
+        if "disability_status" in data and data["disability_status"] is not None:
+            profile.disability_status = data["disability_status"]
+        if "family_size" in data and data["family_size"] is not None:
+            profile.family_size = data["family_size"]
+            
+        self._audit.record(
+            action="admin.citizen_profile_updated",
+            entity_type="profile",
+            entity_id=profile.id,
+            actor_user_id=current.id,
+        )
+        self._session.commit()
+        return self.get_citizen(current, user_id)
+
     # ─── Notification operations ────────────────────────────────────────── #
     def list_notifications(
         self,
@@ -408,6 +513,21 @@ class AdminService:
             created_at=user.created_at,
         )
 
+    def delete_user(self, current: CurrentUser, user_id: uuid.UUID) -> dict:
+        self._require_admin(current)
+        user = self._repo.get_user(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        self._session.delete(user)
+        self._audit.record(
+            action="admin.user_deleted",
+            entity_type="user",
+            entity_id=user_id,
+            actor_user_id=current.id,
+        )
+        self._session.commit()
+        return {"success": True, "message": "User deleted successfully."}
+
     # ─── System health ──────────────────────────────────────────────────── #
     def system_health(self, current: CurrentUser) -> SystemHealth:
         self._require_admin(current)
@@ -438,14 +558,14 @@ class AdminService:
 
     # ─── Agent consent-scoped access ────────────────────────────────────── #
     def agent_citizens(self, current: CurrentUser) -> list[dict]:
-        if current.role != UserRole.AGENT.value:
+        if current.role not in (UserRole.AGENT.value, UserRole.ADMIN.value, UserRole.SCHEME_ADMIN.value):
             raise PermissionDeniedError()
         return self._repo.agent_authorized_citizens(current.id)
 
     def agent_citizen_detail(
         self, current: CurrentUser, citizen_user_id: uuid.UUID
     ) -> CitizenDetailAdmin:
-        if current.role != UserRole.AGENT.value:
+        if current.role not in (UserRole.AGENT.value, UserRole.ADMIN.value, UserRole.SCHEME_ADMIN.value):
             raise PermissionDeniedError()
 
         user = self._repo.get_citizen_user(citizen_user_id)

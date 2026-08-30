@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/auth-context';
-import { requestOtp } from '@/lib/api/auth';
+import { requestOtp, verifyOtp } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { ShieldCheck, UserPlus, Mail, Lock, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Mail, Lock, Phone, ArrowRight, CheckCircle2, User } from 'lucide-react';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -16,6 +16,9 @@ export function RegisterForm() {
 
   // Tab state: 'email' | 'phone'
   const [method, setMethod] = useState<'email' | 'phone'>('email');
+
+  // Common mandatory field
+  const [fullName, setFullName] = useState('');
 
   // Email form state
   const [email, setEmail] = useState('');
@@ -40,6 +43,12 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const cleanName = fullName.trim();
+    if (!cleanName || cleanName.length < 2) {
+      setError('Please enter your full legal name.');
+      return;
+    }
 
     const cleanEmail = email.trim();
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
@@ -76,14 +85,13 @@ export function RegisterForm() {
         try {
           await verifyOtp(cleanEmail, cleanCode);
         } catch (otpErr: any) {
-          // If OTP verification fails
           setError(otpErr.message || 'Invalid or expired OTP verification code.');
           setIsLoading(false);
           return;
         }
 
         await registerUser(cleanEmail, password);
-        setSuccess('Account verified & created successfully! Redirecting to portal...');
+        setSuccess(`Welcome ${cleanName}! Account verified & created successfully! Redirecting...`);
         setTimeout(() => {
           router.push('/dashboard');
         }, 1000);
@@ -98,6 +106,12 @@ export function RegisterForm() {
   const handleSendPhoneOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const cleanName = fullName.trim();
+    if (!cleanName || cleanName.length < 2) {
+      setError('Please enter your full legal name.');
+      return;
+    }
 
     const cleanPhone = phone.trim();
     if (!/^\d{10}$/.test(cleanPhone)) {
@@ -121,6 +135,12 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
 
+    const cleanName = fullName.trim();
+    if (!cleanName || cleanName.length < 2) {
+      setError('Please enter your full legal name.');
+      return;
+    }
+
     const cleanCode = otpCode.trim();
     if (!/^\d{6}$/.test(cleanCode)) {
       setError('Please enter the 6-digit verification code.');
@@ -130,7 +150,7 @@ export function RegisterForm() {
     setIsLoading(true);
     try {
       await loginWithOtp(phone.trim(), cleanCode);
-      setSuccess('Phone verified successfully! Redirecting to portal...');
+      setSuccess(`Welcome ${cleanName}! Phone verified successfully! Redirecting...`);
       setTimeout(() => {
         router.push('/dashboard');
       }, 1000);
@@ -149,7 +169,7 @@ export function RegisterForm() {
         </div>
         <h1 className="text-2xl font-bold text-slate-900">Create Citizen Account</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Register to discover schemes, verify eligibility & track applications.
+          Register to discover schemes, verify eligibility &amp; track applications.
         </p>
       </div>
 
@@ -169,7 +189,7 @@ export function RegisterForm() {
           }`}
         >
           <Mail className="w-3.5 h-3.5" />
-          Email & Password
+          Email &amp; Password
         </button>
         <button
           type="button"
@@ -197,17 +217,26 @@ export function RegisterForm() {
           {!emailOtpSent ? (
             <>
               <Input
-                label="Email Address"
-                type="email"
-                placeholder="citizen@example.gov.in"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                label="Full Legal Name *"
+                type="text"
+                placeholder="e.g. Aakib Ahmad Bhat"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
                 autoFocus
               />
 
               <Input
-                label="Password"
+                label="Email Address *"
+                type="email"
+                placeholder="citizen@example.gov.in"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+
+              <Input
+                label="Password *"
                 type="password"
                 placeholder="••••••••••••"
                 value={password}
@@ -216,7 +245,7 @@ export function RegisterForm() {
               />
 
               <Input
-                label="Confirm Password"
+                label="Confirm Password *"
                 type="password"
                 placeholder="••••••••••••"
                 value={confirmPassword}
@@ -255,7 +284,7 @@ export function RegisterForm() {
               </div>
 
               <Input
-                label="Enter 6-Digit Email Verification Code"
+                label="Enter 6-Digit Email Verification Code *"
                 type="text"
                 placeholder="123456"
                 value={emailOtpCode}
@@ -292,14 +321,23 @@ export function RegisterForm() {
         !otpSent ? (
           <form onSubmit={handleSendPhoneOtp} className="space-y-4">
             <Input
-              label="Mobile Number (10 Digits)"
+              label="Full Legal Name *"
+              type="text"
+              placeholder="e.g. Aakib Ahmad Bhat"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              autoFocus
+            />
+
+            <Input
+              label="Mobile Number (10 Digits) *"
               type="tel"
               placeholder="e.g. 9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               maxLength={10}
               required
-              autoFocus
             />
 
             <Button type="submit" className="w-full py-3" isLoading={isLoading}>
@@ -325,7 +363,7 @@ export function RegisterForm() {
             </div>
 
             <Input
-              label="Enter 6-Digit OTP Code"
+              label="Enter 6-Digit OTP Code *"
               type="text"
               placeholder="123456"
               value={otpCode}
@@ -337,7 +375,7 @@ export function RegisterForm() {
 
             <Button type="submit" className="w-full py-3" isLoading={isLoading}>
               <ShieldCheck className="w-4 h-4 mr-2" />
-              Verify & Complete Registration
+              Verify &amp; Complete Registration
             </Button>
 
             <div className="text-center pt-2">

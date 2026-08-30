@@ -31,3 +31,9 @@ export async function updateUser(id: string, data: { role?: string; status?: str
     body: data,
   });
 }
+
+export async function deleteUser(id: string): Promise<{ success: boolean; message: string }> {
+  return apiClient<{ success: boolean; message: string }>(`/admin/users/${id}`, {
+    method: 'DELETE',
+  });
+}

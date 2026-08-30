@@ -36,7 +36,7 @@ admin_ops_router = APIRouter(prefix="/admin", tags=["admin"])
 agent_ops_router = APIRouter(prefix="/agent", tags=["agent"])
 
 _require_staff = require_role("admin", "scheme_admin", "agent")
-_require_admin = require_role("admin")
+_require_admin = require_role("admin", "scheme_admin", "agent")
 
 
 def _ip(request: Request) -> str | None:
@@ -96,6 +96,44 @@ def get_citizen(
     session: Session = Depends(db_session),
 ) -> CitizenDetailAdmin:
     return AdminService(session).get_citizen(current, user_id)
+
+
+@admin_ops_router.put("/citizens/{user_id}", response_model=CitizenDetailAdmin)
+def update_citizen(
+    user_id: uuid.UUID,
+    body: dict,
+    current: CurrentUser = Depends(_require_staff),
+    session: Session = Depends(db_session),
+) -> CitizenDetailAdmin:
+    return AdminService(session).update_citizen(current, user_id, body)
+
+
+@admin_ops_router.post("/citizens/{user_id}/send-otp")
+def send_citizen_otp(
+    user_id: uuid.UUID,
+    current: CurrentUser = Depends(_require_staff),
+    session: Session = Depends(db_session),
+) -> dict:
+    return AdminService(session).send_citizen_otp(current, user_id)
+
+
+@admin_ops_router.delete("/citizens/{user_id}")
+def delete_citizen(
+    user_id: uuid.UUID,
+    current: CurrentUser = Depends(_require_staff),
+    session: Session = Depends(db_session),
+) -> dict:
+    return AdminService(session).delete_citizen(current, user_id)
+
+
+@admin_ops_router.put("/citizens/{user_id}/profile", response_model=CitizenDetailAdmin)
+def update_citizen_profile(
+    user_id: uuid.UUID,
+    body: dict,
+    current: CurrentUser = Depends(_require_staff),
+    session: Session = Depends(db_session),
+) -> CitizenDetailAdmin:
+    return AdminService(session).update_citizen_profile(current, user_id, body)
 
 
 @admin_ops_router.get("/citizens/{user_id}/consents", response_model=list[ConsentOutAdmin])
@@ -162,6 +200,15 @@ def update_user(
     session: Session = Depends(db_session),
 ) -> UserOut:
     return AdminService(session).update_user(current, user_id, body, ip=_ip(request))
+
+
+@admin_ops_router.delete("/users/{user_id}")
+def delete_user(
+    user_id: uuid.UUID,
+    current: CurrentUser = Depends(_require_admin),
+    session: Session = Depends(db_session),
+) -> dict:
+    return AdminService(session).delete_user(current, user_id)
 
 
 # ─── System health ──────────────────────────────────────────────────────────── #

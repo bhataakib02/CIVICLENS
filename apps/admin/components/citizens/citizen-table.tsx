@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { CitizenSummary } from '@/types/api';
-import { formatDate } from '@/lib/formatting';
-import { Eye, FilePlus, ChevronRight } from 'lucide-react';
+import { formatDate, formatReadableId } from '@/lib/formatting';
+import { Eye, FilePlus, UserCheck } from 'lucide-react';
 
 interface CitizenTableProps {
   citizens: CitizenSummary[];
@@ -14,10 +14,21 @@ interface CitizenTableProps {
 export function CitizenTable({ citizens, onSelect }: CitizenTableProps) {
   const columns: Column<CitizenSummary>[] = [
     {
+      header: 'Citizen Ref ID',
+      accessorKey: 'user_id',
+      cell: (item) => (
+        <div className="space-y-0.5">
+          <span className="font-mono text-xs font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg">
+            {formatReadableId(item.email || item.user_id, 'CIT')}
+          </span>
+        </div>
+      ),
+    },
+    {
       header: 'Email / Handle',
       accessorKey: 'email',
       cell: (item) => (
-        <div className="font-mono text-slate-900 dark:text-white font-semibold">
+        <div className="font-mono text-slate-900 dark:text-white font-bold">
           {item.email || 'Phone account'}
         </div>
       ),
@@ -26,7 +37,7 @@ export function CitizenTable({ citizens, onSelect }: CitizenTableProps) {
       header: 'Masked Phone',
       accessorKey: 'phone_number_masked',
       cell: (item) => (
-        <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">
+        <span className="font-mono text-slate-600 dark:text-slate-300 font-semibold">
           {item.phone_number_masked || '—'}
         </span>
       ),
@@ -96,7 +107,7 @@ export function CitizenTable({ citizens, onSelect }: CitizenTableProps) {
       data={citizens}
       keyExtractor={(item) => item.user_id}
       onRowClick={onSelect}
-      emptyMessage="No citizen records found."
+      emptyMessage="No citizen records found matching active filters."
     />
   );
 }
