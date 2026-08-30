@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { getDashboardMetrics } from '@/lib/api/system';
 import { getApplications } from '@/lib/api/applications';
 import { getAuditLogs } from '@/lib/api/audit';
+import { getCrawlMetrics, CrawlMetrics } from '@/lib/api/opportunities';
 import { DashboardMetrics, ApplicationSummary, AuditLogEntry } from '@/types/api';
 import {
   FileText,
@@ -26,7 +27,11 @@ import {
   Cpu,
   CheckCircle2,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Compass,
+  Globe,
+  Link2,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 
@@ -34,6 +39,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { account } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [crawlMetrics, setCrawlMetrics] = useState<CrawlMetrics | null>(null);
   const [recentApplications, setRecentApplications] = useState<ApplicationSummary[]>([]);
   const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,13 +50,15 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const [mRes, appRes, auditRes] = await Promise.allSettled([
+      const [mRes, crawlRes, appRes, auditRes] = await Promise.allSettled([
         getDashboardMetrics(),
+        getCrawlMetrics(),
         getApplications({ page: 1, page_size: 5 }),
         getAuditLogs({ page: 1, page_size: 6 }),
       ]);
 
       if (mRes.status === 'fulfilled') setMetrics(mRes.value);
+      if (crawlRes.status === 'fulfilled') setCrawlMetrics(crawlRes.value);
       if (appRes.status === 'fulfilled') setRecentApplications(appRes.value.items || []);
       if (auditRes.status === 'fulfilled') setRecentAuditLogs(auditRes.value.items || []);
 
@@ -79,7 +87,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <p className="text-xs text-console-muted mt-1">
-            Real-time status of backend operations, four-eyes review queues & system telemetry
+            Real-time status of backend operations, opportunity crawler telemetry & system metrics
           </p>
         </div>
 
@@ -101,7 +109,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Action Shortcuts Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Link
           href="/schemes/new"
           className="flex items-center gap-2.5 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-xs font-semibold text-indigo-300 group"
@@ -110,18 +118,25 @@ export default function DashboardPage() {
           <span>New Scheme Draft</span>
         </Link>
         <Link
+          href="/opportunities/crawls"
+          className="flex items-center gap-2.5 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all text-xs font-semibold text-cyan-300 group"
+        >
+          <Compass className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+          <span>Crawl Observability</span>
+        </Link>
+        <Link
+          href="/opportunities/sources"
+          className="flex items-center gap-2.5 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-all text-xs font-semibold text-purple-300 group"
+        >
+          <Globe className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+          <span>Source Registry</span>
+        </Link>
+        <Link
           href="/applications?status=submitted"
           className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all text-xs font-semibold text-amber-300 group"
         >
           <FileText className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
           <span>Review Submissions</span>
-        </Link>
-        <Link
-          href="/citizens"
-          className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-xs font-semibold text-blue-300 group"
-        >
-          <Users className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-          <span>Lookup Citizens</span>
         </Link>
         <Link
           href="/audit"
@@ -144,78 +159,138 @@ export default function DashboardPage() {
           <Loader2 className="h-8 w-8 animate-spin text-console-accent" />
         </div>
       ) : metrics ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Pending Application Review"
-            value={metrics.applications_pending_review}
-            subtitle="Submitted applications awaiting worker review"
-            icon={FileText}
-            variant="info"
-            onClick={() => router.push('/applications?status=submitted')}
-          />
+        <div className="space-y-6">
+          {/* Section 1: Application & Scheme Operational Metrics */}
+          <div>
+            <h2 className="text-xs font-bold text-console-muted uppercase tracking-wider mb-3">Case Management & Core Operations</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="Pending Application Review"
+                value={metrics.applications_pending_review}
+                subtitle="Submitted applications awaiting worker review"
+                icon={FileText}
+                variant="info"
+                onClick={() => router.push('/applications?status=submitted')}
+              />
 
-          <MetricCard
-            title="Action Required Applications"
-            value={metrics.applications_action_required}
-            subtitle="Waiting for citizen response"
-            icon={AlertTriangle}
-            variant="warning"
-            onClick={() => router.push('/applications?status=action_required')}
-          />
+              <MetricCard
+                title="Action Required Applications"
+                value={metrics.applications_action_required}
+                subtitle="Waiting for citizen response"
+                icon={AlertTriangle}
+                variant="warning"
+                onClick={() => router.push('/applications?status=action_required')}
+              />
 
-          <MetricCard
-            title="Documents Needing Verification"
-            value={metrics.documents_verification_required}
-            subtitle="Extracted document evidence requiring verification"
-            icon={FileCheck}
-            variant="warning"
-            onClick={() => router.push('/documents')}
-          />
+              <MetricCard
+                title="Documents Needing Verification"
+                value={metrics.documents_verification_required}
+                subtitle="Extracted document evidence requiring verification"
+                icon={FileCheck}
+                variant="warning"
+                onClick={() => router.push('/documents')}
+              />
 
-          <MetricCard
-            title="Scheme Drafts Pending Review"
-            value={metrics.scheme_drafts_awaiting_review}
-            subtitle="Versions awaiting four-eyes publish approval"
-            icon={Building}
-            variant="info"
-            onClick={() => router.push('/schemes')}
-          />
+              <MetricCard
+                title="Scheme Drafts Pending Review"
+                value={metrics.scheme_drafts_awaiting_review}
+                subtitle="Versions awaiting four-eyes publish approval"
+                icon={Building}
+                variant="info"
+                onClick={() => router.push('/schemes')}
+              />
+            </div>
+          </div>
 
-          <MetricCard
-            title="Pending Knowledge Sources"
-            value={metrics.knowledge_sources_pending}
-            subtitle="Sources needing verification"
-            icon={BookOpen}
-            variant="neutral"
-            onClick={() => router.push('/knowledge')}
-          />
+          {/* Section 2: Opportunity Intelligence & Crawler Telemetry */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold text-console-muted uppercase tracking-wider flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                Opportunity Intelligence & Ingestion Telemetry
+              </h2>
+              <Link href="/opportunities/crawls" className="text-xs text-cyan-400 hover:underline font-semibold flex items-center gap-1">
+                <span>View Full Crawl Logs</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="Active Opportunity Sources"
+                value={crawlMetrics?.active_sources ?? 0}
+                subtitle={`${crawlMetrics?.verified_sources ?? 0} official verified portals indexed`}
+                icon={Globe}
+                variant="info"
+                onClick={() => router.push('/opportunities/sources')}
+              />
 
-          <MetricCard
-            title="Failed Notifications"
-            value={metrics.notifications_failed}
-            subtitle="Delivery failures requiring inspection"
-            icon={BellOff}
-            variant="danger"
-            onClick={() => router.push('/notifications')}
-          />
+              <MetricCard
+                title="Extraction Quality Review Queue"
+                value={crawlMetrics?.review_queue_count ?? 0}
+                subtitle="Low confidence AI opportunity extractions"
+                icon={Sparkles}
+                variant="warning"
+                onClick={() => router.push('/opportunities/quality')}
+              />
 
-          <MetricCard
-            title="Total Registered Citizens"
-            value={metrics.total_citizens}
-            subtitle="Citizen user accounts in system"
-            icon={Users}
-            variant="neutral"
-            onClick={() => router.push('/citizens')}
-          />
+              <MetricCard
+                title="Broken Application Links"
+                value={crawlMetrics?.broken_links_count ?? 0}
+                subtitle="Dead or redirected destination URLs"
+                icon={Link2}
+                variant={crawlMetrics?.broken_links_count ? 'danger' : 'neutral'}
+                onClick={() => router.push('/opportunities/links')}
+              />
 
-          <MetricCard
-            title="Total Applications"
-            value={metrics.total_applications}
-            subtitle="All-time case file count"
-            icon={Layers}
-            variant="neutral"
-            onClick={() => router.push('/applications')}
-          />
+              <MetricCard
+                title="Crawl Success Rate"
+                value={crawlMetrics ? `${(crawlMetrics.crawl_success_rate * 100).toFixed(0)}%` : 'N/A'}
+                subtitle={`Last crawl: ${crawlMetrics?.last_crawl_time ? new Date(crawlMetrics.last_crawl_time).toLocaleTimeString() : 'Recent'}`}
+                icon={Compass}
+                variant="info"
+                onClick={() => router.push('/opportunities/crawls')}
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Platform Scale Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Pending Knowledge Sources"
+              value={metrics.knowledge_sources_pending}
+              subtitle="Sources needing verification"
+              icon={BookOpen}
+              variant="neutral"
+              onClick={() => router.push('/knowledge')}
+            />
+
+            <MetricCard
+              title="Failed Notifications"
+              value={metrics.notifications_failed}
+              subtitle="Delivery failures requiring inspection"
+              icon={BellOff}
+              variant="danger"
+              onClick={() => router.push('/notifications')}
+            />
+
+            <MetricCard
+              title="Total Registered Citizens"
+              value={metrics.total_citizens}
+              subtitle="Citizen user accounts in system"
+              icon={Users}
+              variant="neutral"
+              onClick={() => router.push('/citizens')}
+            />
+
+            <MetricCard
+              title="Total Applications"
+              value={metrics.total_applications}
+              subtitle="All-time case file count"
+              icon={Layers}
+              variant="neutral"
+              onClick={() => router.push('/applications')}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -283,6 +358,16 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-console-bg border border-console-border/60 flex items-center justify-between text-xs">
+              <div className="space-y-0.5">
+                <p className="font-semibold text-console-text">Opportunity Discovery Crawler</p>
+                <p className="text-[10px] text-console-muted">30-min scheduled RSS/HTML ingestion</p>
+              </div>
+              <span className="flex items-center text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+                <CheckCircle2 className="w-3 h-3 mr-1" /> ACTIVE
+              </span>
+            </div>
+
             <div className="p-3 rounded-xl bg-console-bg border border-console-border/60 flex items-center justify-between text-xs">
               <div className="space-y-0.5">
                 <p className="font-semibold text-console-text">Deterministic AST Engine</p>
