@@ -26,7 +26,7 @@ Write-Host ""
 Write-Host "[2/4] Starting backend (Docker)..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
-    "cd d:\CIVICLENS; Write-Host 'BACKEND - postgres / redis / api / worker' -ForegroundColor Cyan; docker compose up postgres redis api worker migration"
+    "cd d:\CIVICLENS; Write-Host 'BACKEND - postgres / redis / api / worker' -ForegroundColor Cyan; docker compose up --remove-orphans postgres redis api worker migration"
 ) -WindowStyle Normal
 
 Start-Sleep -Seconds 2
